@@ -1,0 +1,59 @@
+========================================
+КОМАНДЫ ДЛЯ ВОССТАНОВЛЕНИЯ GRUB
+========================================
+
+СКОПИРУЙТЕ И ВСТАВЬТЕ В ТЕРМИНАЛ (в Live Mint):
+
+# 1. Найти раздел с Mint
+sudo fdisk -l
+
+# 2. Монтировать (ЗАМЕНИТЕ /dev/sda2 на ваш раздел!)
+sudo mount /dev/sda2 /mnt
+sudo mount /dev/sda1 /mnt/boot/efi
+sudo mount --bind /dev /mnt/dev
+sudo mount --bind /proc /mnt/proc
+sudo mount --bind /sys /mnt/sys
+sudo mount --bind /run /mnt/run
+
+# 3. Войти в систему
+sudo chroot /mnt
+
+# 4. Восстановить GRUB
+grub-install /dev/sda
+update-grub
+
+# 5. Выйти
+exit
+
+# 6. Размонтировать
+sudo umount /mnt/run
+sudo umount /mnt/sys
+sudo umount /mnt/proc
+sudo umount /mnt/dev
+sudo umount /mnt/boot/efi
+sudo umount /mnt
+
+# 7. Перезагрузить
+sudo reboot
+
+========================================
+ЕСЛИ ОШИБКА С EFI:
+========================================
+
+Попробуйте без /boot/efi:
+sudo mount /dev/sda2 /mnt
+sudo mount --bind /dev /mnt/dev
+sudo mount --bind /proc /mnt/proc
+sudo mount --bind /sys /mnt/sys
+sudo mount --bind /run /mnt/run
+sudo chroot /mnt
+grub-install /dev/sda --efi-directory=/boot/efi
+update-grub
+exit
+sudo umount /mnt/run /mnt/sys /mnt/proc /mnt/dev /mnt
+sudo reboot
+
+
+
+
+

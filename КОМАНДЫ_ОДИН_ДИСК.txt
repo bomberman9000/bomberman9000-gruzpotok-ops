@@ -1,0 +1,47 @@
+========================================
+КОМАНДЫ ДЛЯ ОДНОГО ДИСКА (СКОПИРУЙТЕ ВСЕ)
+========================================
+
+# 1. Посмотреть разделы
+sudo fdisk -l
+
+# 2. Монтировать (ЗАМЕНИТЕ /dev/sda1 и /dev/sda2 на ваши!)
+sudo mount /dev/sda2 /mnt
+sudo mount /dev/sda1 /mnt/boot/efi
+sudo mount --bind /dev /mnt/dev
+sudo mount --bind /proc /mnt/proc
+sudo mount --bind /sys /mnt/sys
+sudo mount --bind /run /mnt/run
+
+# 3. Войти в систему
+sudo chroot /mnt
+
+# 4. Восстановить GRUB
+grub-install /dev/sda
+update-grub
+
+# 5. Выйти
+exit
+
+# 6. Размонтировать
+sudo umount /mnt/run
+sudo umount /mnt/sys
+sudo umount /mnt/proc
+sudo umount /mnt/dev
+sudo umount /mnt/boot/efi
+sudo umount /mnt
+
+# 7. Перезагрузить
+sudo reboot
+
+========================================
+ПОСЛЕ ПЕРЕЗАГРУЗКИ:
+========================================
+- Выньте флешку
+- Появится GRUB меню
+- Выберите Linux Mint или Windows
+
+
+
+
+

@@ -1,0 +1,105 @@
+========================================
+  КОНФИГ ДЛЯ MAC
+========================================
+
+Один и тот же конфиг для Windows и Mac!
+
+========================================
+  КАК ИСПОЛЬЗОВАТЬ НА MAC:
+========================================
+
+1. Скопируйте файл на Mac:
+   C:\Users\Shata\.hysteria2\config-mac.yaml
+
+2. На Mac создайте папку:
+   mkdir -p ~/.hysteria2
+
+3. Скопируйте файл:
+   cp config-mac.yaml ~/.hysteria2/config.yaml
+
+4. Запустите Hysteria2:
+   hysteria2 -c ~/.hysteria2/config.yaml
+
+========================================
+  СОДЕРЖИМОЕ КОНФИГА:
+========================================
+
+server: 144.31.64.130:4443
+auth: Samara128500
+
+bandwidth:
+  up: 20 Mbps
+  down: 100 Mbps
+
+socks5:
+  listen: 127.0.0.1:1080
+
+http:
+  listen: 127.0.0.1:8080
+
+tls:
+  sni: 144.31.64.130
+  insecure: true
+
+========================================
+  НАСТРОЙКА ПРОКСИ НА MAC:
+========================================
+
+1. System Settings → Network
+2. Выберите ваше подключение
+3. Advanced → Proxies
+4. Включите:
+   - HTTP Proxy: 127.0.0.1:8080
+   - SOCKS Proxy: 127.0.0.1:1080
+
+Или через терминал:
+  networksetup -setwebproxy "Wi-Fi" 127.0.0.1 8080
+  networksetup -setsocksfirewallproxy "Wi-Fi" 127.0.0.1 1080
+
+========================================
+  АВТОЗАПУСК НА MAC:
+========================================
+
+Создайте файл: ~/Library/LaunchAgents/com.hysteria2.plist
+
+Содержимое:
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hysteria2</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/hysteria2</string>
+        <string>-c</string>
+        <string>/Users/YOUR_USERNAME/.hysteria2/config.yaml</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+
+Загрузите:
+  launchctl load ~/Library/LaunchAgents/com.hysteria2.plist
+
+========================================
+  ФАЙЛ НА WINDOWS:
+========================================
+
+C:\Users\Shata\.hysteria2\config-mac.yaml
+
+Скопируйте этот файл на Mac!
+
+========================================
+
+
+
+
+
+
+
+
+

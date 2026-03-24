@@ -1,0 +1,74 @@
+========================================
+  ПЕРЕУСТАНОВИТЬ MICROSOFT STORE
+========================================
+
+Используйте правильный скрипт для переустановки!
+
+========================================
+  КАК ИСПОЛЬЗОВАТЬ:
+========================================
+
+1. PowerShell ОТ ИМЕНИ АДМИНИСТРАТОРА
+
+2. Выполните:
+
+   cd C:\Users\Shata\project
+   .\reinstall-store.ps1
+
+3. Дождитесь завершения
+
+4. ПЕРЕЗАГРУЗИТЕ КОМПЬЮТЕР
+
+5. После перезагрузки попробуйте Store
+
+========================================
+  ЕСЛИ СКРИПТ НЕ НАЙДЕТ ПАКЕТ:
+========================================
+
+Выполните восстановление через DISM:
+
+dism /online /cleanup-image /restorehealth
+
+Затем:
+
+sfc /scannow
+
+После этого снова запустите:
+
+.\reinstall-store.ps1
+
+========================================
+  АЛЬТЕРНАТИВНЫЙ МЕТОД (ВРУЧНУЮ):
+========================================
+
+1. Найдите Store в WindowsApps:
+
+   Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.WindowsStore_*" -Directory
+
+2. Зарегистрируйте найденный пакет:
+
+   $storePath = Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.WindowsStore_*" -Directory | Select-Object -First 1
+   $manifest = Join-Path $storePath.FullName "AppxManifest.xml"
+   Add-AppxPackage -Register $manifest -DisableDevelopmentMode
+
+3. Перезагрузите компьютер
+
+========================================
+  ЕСЛИ ВСЕ ЕЩЕ НЕ РАБОТАЕТ:
+========================================
+
+Попробуйте восстановить Windows Store через
+Windows Settings:
+
+1. Параметры → Приложения → Приложения и возможности
+2. Найдите Microsoft Store
+3. Дополнительные параметры → Сброс
+
+Или используйте PowerShell:
+
+Get-AppxPackage Microsoft.WindowsStore | Reset-AppxPackage
+
+========================================
+
+
+

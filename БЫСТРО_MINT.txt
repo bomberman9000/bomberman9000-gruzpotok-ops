@@ -1,0 +1,51 @@
+========================================
+БЫСТРОЕ ВОССТАНОВЛЕНИЕ ЗАГРУЗЧИКА MINT
+========================================
+
+ВАРИАНТ 1: ЧЕРЕЗ LIVE USB (ЛУЧШИЙ)
+------------------------------------
+✅ Самый надежный способ
+✅ Восстанавливает GRUB полностью
+
+1. Скачайте Linux Mint ISO: https://linuxmint.com/download.php
+2. Создайте загрузочную флешку через Rufus
+3. Загрузитесь с флешки (F12 при загрузке)
+4. В терминале выполните:
+
+   sudo mount /dev/sda2 /mnt
+   sudo mount /dev/sda1 /mnt/boot/efi
+   sudo mount --bind /dev /mnt/dev
+   sudo mount --bind /proc /mnt/proc
+   sudo mount --bind /sys /mnt/sys
+   sudo mount --bind /run /mnt/run
+   sudo chroot /mnt
+   grub-install /dev/sda
+   update-grub
+   exit
+   sudo reboot
+
+ВАРИАНТ 2: EASYBCD (БЕЗ LIVE USB)
+----------------------------------
+✅ Не нужна флешка
+✅ Работает из Windows
+
+1. Скачайте: https://neosmart.net/EasyBCD/
+2. Установите и запустите от имени администратора
+3. Add New Entry → Linux/BSD → GRUB 2
+4. Выберите раздел с Mint (обычно большой раздел без буквы)
+5. Add Entry → Перезагрузите
+
+ВАРИАНТ 3: ИЗ WINDOWS (ПРОДВИНУТЫЙ)
+------------------------------------
+Запустите: fix-mint-bootloader.ps1
+(от имени администратора)
+
+ПОДСКАЗКА:
+----------
+Раздел S: (1TB) может быть вашим Mint разделом.
+Проверьте через: fix-mint-bootloader.ps1
+
+
+
+
+

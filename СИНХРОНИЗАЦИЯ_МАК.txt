@@ -1,0 +1,109 @@
+========================================
+  СИНХРОНИЗАЦИЯ КОНФИГА С MAC
+========================================
+
+Один и тот же конфиг для Windows и Mac!
+
+========================================
+  КАК СИНХРОНИЗИРОВАТЬ:
+========================================
+
+СПОСОБ 1 - Ручное копирование:
+-------------------------------
+1. На Windows: откройте файл
+   C:\Users\Shata\.hysteria2\config-mac.yaml
+
+2. Скопируйте содержимое
+
+3. На Mac: создайте папку
+   mkdir -p ~/.hysteria2
+
+4. Создайте файл:
+   nano ~/.hysteria2/config.yaml
+
+5. Вставьте содержимое и сохраните
+
+6. Запустите на Mac:
+   hysteria2 -c ~/.hysteria2/config.yaml
+
+СПОСОБ 2 - Через облако:
+-------------------------
+1. Загрузите config-mac.yaml в облако
+   (Dropbox, iCloud, Google Drive)
+
+2. На Mac скачайте файл
+
+3. Поместите в ~/.hysteria2/config.yaml
+
+СПОСОБ 3 - Через SSH/SCP:
+--------------------------
+Если Mac доступен по сети:
+
+scp C:\Users\Shata\.hysteria2\config-mac.yaml user@mac-ip:~/.hysteria2/config.yaml
+
+========================================
+  КОНФИГУРАЦИЯ:
+========================================
+
+Сервер: 144.31.64.130:4443
+Auth: Samara128500
+SNI: 144.31.64.130
+Insecure: true
+
+HTTP Proxy: 127.0.0.1:8080
+SOCKS5 Proxy: 127.0.0.1:1080
+
+========================================
+  ЗАПУСК НА MAC:
+========================================
+
+1. Установите Hysteria2 на Mac (если еще нет):
+   brew install hysteria
+   # или скачайте с GitHub
+
+2. Запустите:
+   hysteria2 -c ~/.hysteria2/config.yaml
+
+3. Настройте прокси на Mac:
+   System Settings → Network → Proxies
+   HTTP: 127.0.0.1:8080
+   SOCKS5: 127.0.0.1:1080
+
+========================================
+  АВТОЗАПУСК НА MAC:
+========================================
+
+Создайте файл: ~/Library/LaunchAgents/com.hysteria2.plist
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hysteria2</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/hysteria2</string>
+        <string>-c</string>
+        <string>/Users/YOUR_USERNAME/.hysteria2/config.yaml</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+
+Затем:
+launchctl load ~/Library/LaunchAgents/com.hysteria2.plist
+
+========================================
+
+
+
+
+
+
+
+
+

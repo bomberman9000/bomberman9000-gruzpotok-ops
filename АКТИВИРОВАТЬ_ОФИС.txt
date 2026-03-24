@@ -1,0 +1,103 @@
+========================================
+АКТИВАЦИЯ MICROSOFT OFFICE
+========================================
+
+КАК ИСПОЛЬЗОВАТЬ:
+------------------
+
+1. PowerShell ОТ ИМЕНИ АДМИНИСТРАТОРА
+
+2. Выполните:
+   cd C:\Users\Shata\project
+   .\activate-office.ps1
+
+3. Скрипт автоматически:
+   - Найдет установку Office
+   - Установит KMS ключ
+   - Настроит KMS сервер
+   - Активирует Office
+
+========================================
+РУЧНАЯ АКТИВАЦИЯ:
+========================================
+
+Если скрипт не работает, выполните команды вручную:
+
+1. Найдите OSPP.VBS (обычно в):
+   C:\Program Files\Microsoft Office\Office16\OSPP.VBS
+   или
+   C:\Program Files (x86)\Microsoft Office\Office16\OSPP.VBS
+
+2. Проверьте статус:
+   cscript "C:\Program Files\Microsoft Office\Office16\OSPP.VBS" /dstatus
+
+3. Установите KMS ключ (Office 2021/2019):
+   cscript "C:\Program Files\Microsoft Office\Office16\OSPP.VBS" /inpkey:NMMKJ-6RK4F-KMJVX-8D9MJ-6MWKP
+
+4. Установите KMS сервер:
+   cscript "C:\Program Files\Microsoft Office\Office16\OSPP.VBS" /sethst:kms8.msguides.com
+
+5. Активируйте:
+   cscript "C:\Program Files\Microsoft Office\Office16\OSPP.VBS" /act
+
+========================================
+KMS КЛЮЧИ:
+========================================
+
+Office 2021 ProPlus:
+  FXYTK-NJJ8C-GB6DW-3DYQT-6F7TH
+
+Office 2021 Standard:
+  KDX7X-BNVR8-TXXGX-4Q7Y8-78VT3
+
+Office 2019 ProPlus:
+  NMMKJ-6RK4F-KMJVX-8D9MJ-6MWKP
+
+Office 2019 Standard:
+  6NWWJ-YQWMR-QKGCB-6TMB3-9D9HK
+
+Office 2016 ProPlus:
+  XQNVK-8JYDB-WJ9W3-YJ8YR-WFG99
+
+Office 2016 Standard:
+  JNRGM-WHDWX-FJJG3-K47QV-DRTFM
+
+========================================
+KMS СЕРВЕРЫ:
+========================================
+
+kms8.msguides.com
+kms.lotro.cc
+kms.chinancce.com
+kms.03k.org
+
+========================================
+ЕСЛИ НЕ РАБОТАЕТ:
+========================================
+
+1. Убедитесь, что запущено от администратора
+
+2. Проверьте, что Office установлен:
+   - Откройте Word или Excel
+   - Если открывается - Office установлен
+
+3. Попробуйте другой KMS сервер
+
+4. Перезагрузите компьютер после активации
+
+5. Откройте Office приложение и проверьте статус:
+   Файл → Учетная запись → Информация о продукте
+
+========================================
+АЛЬТЕРНАТИВНЫЙ МЕТОД:
+========================================
+
+Используйте активатор:
+- KMSAuto Net (бесплатный)
+- Microsoft Toolkit
+- Office 2013-2021 C2R Install
+
+ВНИМАНИЕ: Используйте только проверенные источники!
+
+========================================
+

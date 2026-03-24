@@ -1,0 +1,71 @@
+========================================
+КОМАНДЫ ДЛЯ ИСПРАВЛЕНИЯ CHATGPT
+========================================
+
+БЫСТРОЕ РЕШЕНИЕ:
+----------------
+
+1. Проверить Hysteria2:
+   Get-Process -Name "hysteria2"
+
+2. Запустить скрипт исправления:
+   .\fix-chatgpt.ps1
+
+3. Или вручную настроить Firefox (см. ниже)
+
+НАСТРОЙКА FIREFOX ЧЕРЕЗ ABOUT:CONFIG:
+--------------------------------------
+
+1. Откройте Firefox
+2. В адресной строке: about:config
+3. Нажмите "Принять риск и продолжить"
+
+4. Найдите и установите:
+
+   network.proxy.type = 1
+   network.proxy.http = 127.0.0.1
+   network.proxy.http_port = 8080
+   network.proxy.ssl = 127.0.0.1
+   network.proxy.ssl_port = 8080
+   network.proxy.socks = 127.0.0.1
+   network.proxy.socks_port = 1080
+   network.proxy.socks_version = 5
+   network.proxy.socks_remote_dns = true
+   network.proxy.no_proxies_on = "localhost, 127.0.0.1, *.openai.com, *.chatgpt.com, *.anthropic.com"
+
+5. Перезапустите Firefox
+
+ОТКЛЮЧИТЬ ПРОКСИ ВРЕМЕННО:
+---------------------------
+
+Через about:config:
+   network.proxy.type = 0
+
+Или через PowerShell (для системного прокси):
+   $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+   Set-ItemProperty -Path $key -Name "ProxyEnable" -Value 0
+
+ВКЛЮЧИТЬ ПРОКСИ ОБРАТНО:
+-------------------------
+
+Через PowerShell:
+   $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+   Set-ItemProperty -Path $key -Name "ProxyEnable" -Value 1
+   Set-ItemProperty -Path $key -Name "ProxyServer" -Value "127.0.0.1:8080"
+
+ПРОВЕРКА:
+---------
+
+1. Проверить Hysteria2:
+   Get-Process -Name "hysteria2"
+
+2. Проверить порты:
+   netstat -an | findstr "8080 1080"
+
+3. Проверить системный прокси:
+   Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" | Select-Object ProxyEnable, ProxyServer
+
+4. Проверить доступность ChatGPT:
+   Test-NetConnection -ComputerName "chat.openai.com" -Port 443
+
+
