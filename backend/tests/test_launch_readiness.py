@@ -20,7 +20,11 @@ def test_fixtures_load():
     assert len(cases) >= 3
     for _dir, inp, exp in cases:
         assert "path" in inp
-        assert "status_in" in exp or "status" in exp
+        assert (
+            "status_in" in exp
+            or "status" in exp
+            or exp.get("response_kind") == "pdf"
+        )
 
 
 def test_compare_envelope_pass():
