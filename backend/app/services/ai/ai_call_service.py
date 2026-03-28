@@ -236,7 +236,8 @@ def list_ai_calls(
         params.extend([pat, pat, pat])
     sql = f"""
         SELECT c.id, c.created_at, c.request_id, c.endpoint, c.persona, c.mode, c.normalized_status,
-               c.llm_invoked, c.citations_count, c.response_summary, c.latency_ms, c.is_error, c.user_input_json,
+               c.llm_invoked, COALESCE(c.citations_count, 0) AS citations_count, c.response_summary,
+               COALESCE(c.latency_ms, 0) AS latency_ms, COALESCE(c.is_error, false) AS is_error, c.user_input_json,
                r_rev.operator_action AS review_operator_action,
                r_rev.review_reason_codes AS review_reason_codes
         FROM ai_calls c

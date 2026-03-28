@@ -10,6 +10,12 @@ MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
 MIGRATIONS_TABLE = "schema_migrations_gruzpotok"
 
 
+def _sql_without_line_comments(stmt: str) -> str:
+    """Убирает строки, целиком являющиеся `--` комментариями (после sqlparse.split)."""
+    lines = [ln for ln in stmt.splitlines() if not ln.strip().startswith("--")]
+    return "\n".join(lines).strip()
+
+
 def _ensure_migrations_table(cur) -> None:
     cur.execute(
         f"""
@@ -39,8 +45,8 @@ def run_migrations(conn: PgConnection) -> list[str]:
         sql = path.read_text(encoding="utf-8")
         try:
             for stmt in sqlparse.split(sql):
-                s = stmt.strip()
-                if not s or s.startswith("--"):
+                s = _sql_without_line_comments(stmt)
+                if not s:
                     continue
                 cur.execute(s)
             cur.execute(

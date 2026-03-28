@@ -87,10 +87,12 @@ def test_full_tuning_verification_flow(monkeypatch):
         raw = p003.read_text(encoding="utf-8")
         import sqlparse
 
+        from app.db.migrate import _sql_without_line_comments
+
         cur = conn.cursor()
         for stmt in sqlparse.split(raw):
-            s = stmt.strip()
-            if not s or s.startswith("--"):
+            s = _sql_without_line_comments(stmt)
+            if not s:
                 continue
             cur.execute(s)
         conn.commit()
