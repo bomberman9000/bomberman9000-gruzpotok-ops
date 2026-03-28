@@ -1,6 +1,7 @@
 # PostgreSQL Backups
 backups/
 *.sql
+!backend/app/db/migrations/*.sql
 *.sql.gz
 
 # Environment
