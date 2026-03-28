@@ -1,0 +1,11 @@
+{
+  "name": "legal_claim_review_min",
+  "method": "POST",
+  "path": "/api/v1/ai/claims/review",
+  "body": {
+    "claim_text": "Претензия: задержка поставки груза на 5 суток по договору перевозки №123.",
+    "contract_context": "Договор FCA Москва, штраф 0.1% за день.",
+    "counterparty": "ООО Перевозчик",
+    "debug": false
+  }
+}

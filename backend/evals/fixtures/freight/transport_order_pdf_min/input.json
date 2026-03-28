@@ -1,0 +1,14 @@
+{
+  "name": "freight_transport_order_pdf_min",
+  "method": "POST",
+  "path": "/api/v1/ai/freight/transport-order-pdf",
+  "body": {
+    "pdf_engine": "fpdf",
+    "pdf_template": "dogovor_zayavka",
+    "order_number": "TEST-EVAL-1",
+    "customer_name": "ООО Тестовый заказчик",
+    "loading_address": "г. Москва, ул. Складская, д. 1",
+    "unloading_address": "г. Казань, пр. Промышленный, д. 5",
+    "cargo_name": "Оборудование, масса около 12 т"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "freight_transport_order_compose_min",
+  "method": "POST",
+  "path": "/api/v1/ai/freight/transport-order-compose",
+  "body": {
+    "request_text": "Заявка: ООО Ромашка, груз оборудование 12 т, погрузка Москва ул. Складская 1 завтра 10:00, разгрузка Казань пр. Промышленный 5, перевозчик ИП Иванов, ставка 180 тыс с НДС.",
+    "debug": false
+  }
+}

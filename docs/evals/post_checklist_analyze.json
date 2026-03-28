@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "counts": {
+      "total": 11,
+      "by_reason_code": {},
+      "by_operator_action": {},
+      "by_persona": {
+        "legal": 2,
+        "logistics": 9
+      },
+      "by_endpoint": {
+        "claim_review": 2,
+        "query": 9
+      },
+      "by_scenario": {
+        "legal:strict|claim_review": 2,
+        "logistics:balanced|query": 9
+      }
+    },
+    "top_rejected_reasons": [],
+    "top_edited_reasons": [],
+    "top_scenarios": [
+      {
+        "scenario": "logistics:balanced|query",
+        "count": 9
+      },
+      {
+        "scenario": "legal:strict|claim_review",
+        "count": 2
+      }
+    ],
+    "top_issue": null,
+    "tuning_hints_lines": []
+  },
+  "text_report": "Кейсов: 11\n\nПо operator_action:\n\nTop reason_codes (все кейсы):\n\ntop_rejected_reasons:\n  —\n\ntop_edited_reasons:\n  —\n\ntop scenarios (prompt_profile / scenario):\n  logistics:balanced|query: 9\n  legal:strict|claim_review: 2\n\nTOP ISSUE: нет причины с частотой >= 2 — соберите больше кейсов или снизьте порог.\n\nTuning hints (эвристика):\n  —\n"
+}

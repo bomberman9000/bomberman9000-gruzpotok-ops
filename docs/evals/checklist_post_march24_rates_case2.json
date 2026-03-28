@@ -1,0 +1,131 @@
+[
+  {
+    "title": "2 ставка, данных достаточно",
+    "run_index": 1,
+    "case_index": 2,
+    "request_id": "dd4d27ec-6421-49a7-b546-39d5e1e4e0f9",
+    "url": "http://127.0.0.1:8090/api/v1/ai/query",
+    "status": "ok",
+    "answer": "Ставка: ~72 тыс. руб. с коридором ±10% в зависимости от сезона, топлива, простоев и загрузки рынка.",
+    "raw_response": {
+      "answer": "Ставка: ~72 тыс. руб. с коридором ±10% в зависимости от сезона, топлива, простоев и загрузки рынка.",
+      "citations": [
+        {
+          "document_id": "2fc96d86-6659-4c29-a070-21f44e18f838",
+          "file_name": "freight_market_orienters_ru.md",
+          "source_path": "internal/freight_market_orienters_ru.md",
+          "section_title": "Москва — Санкт-Петербург",
+          "article_ref": null,
+          "chunk_index": 6,
+          "chunk_id": 14,
+          "excerpt": "- **По снимку UL (тент, 20 т, без НДС):** ориентир **~72 тыс. руб.** (см. таблицу выше); при нормальной рыночной волатильности допустима **узкая вилка** вокруг этой суммы.\n- **Реф** по этому же плечу в таблице отдельно не приведён — для реф ориентируйся на ближайшие направления из блока реф или оговорку «уточнить по рынку».\n- **Срочная подача / загрузка «сегодня-завтра»:** к базовой сумме часто **+10–25%** (дефицит ТС)."
+        },
+        {
+          "document_id": "2fc96d86-6659-4c29-a070-21f44e18f838",
+          "file_name": "freight_market_orienters_ru.md",
+          "source_path": "internal/freight_market_orienters_ru.md",
+          "section_title": "Москва — Новороссийск (ориентир)",
+          "article_ref": null,
+          "chunk_index": 8,
+          "chunk_id": 16,
+          "excerpt": "- **Коридор:** примерно **120–200 тыс. руб.** (тент, FTL), сезонность и очереди на выгрузку влияют сильно."
+        },
+        {
+          "document_id": "2fc96d86-6659-4c29-a070-21f44e18f838",
+          "file_name": "freight_market_orienters_ru.md",
+          "source_path": "internal/freight_market_orienters_ru.md",
+          "section_title": "Направления (эвристика, тент, FTL — если нет строки в таблице выше)",
+          "article_ref": null,
+          "chunk_index": 5,
+          "chunk_id": 13,
+          "excerpt": "## Направления (эвристика, тент, FTL — если нет строки в таблице выше)"
+        },
+        {
+          "document_id": "2fc96d86-6659-4c29-a070-21f44e18f838",
+          "file_name": "freight_market_orienters_ru.md",
+          "source_path": "internal/freight_market_orienters_ru.md",
+          "section_title": "Москва — Екатеринбург (ориентир)",
+          "article_ref": null,
+          "chunk_index": 7,
+          "chunk_id": 15,
+          "excerpt": "- Обратное плечо **Екатеринбург → Москва (тент)** в таблице UL: **~87 тыс. руб.**; направление **Москва → Екатеринбург** обычно **дороже** (длиннее порожний баланс) — без отдельной строки в таблице допустим **коридор выше**, например **~180–280 тыс. руб.**, с оговоркой."
+        },
+        {
+          "document_id": "2fc96d86-6659-4c29-a070-21f44e18f838",
+          "file_name": "freight_market_orienters_ru.md",
+          "source_path": "internal/freight_market_orienters_ru.md",
+          "section_title": "Внутренние рыночные ориентиры по автоперевозкам (РФ)",
+          "article_ref": null,
+          "chunk_index": 0,
+          "chunk_id": 8,
+          "excerpt": "**Назначение:** справочные коридоры для RAG и быстрых оценок в продукте.  \n**Не является:** коммерческим предложением, договором или гарантией цены. Фактическая ставка зависит от сезона, топлива, простоев, загрузки рынка, типа ТС и условий оплаты."
+        },
+        {
+          "document_id": "2fc96d86-6659-4c29-a070-21f44e18f838",
+          "file_name": "freight_market_orienters_ru.md",
+          "source_path": "internal/freight_market_orienters_ru.md",
+          "section_title": "Санкт-Петербург — Москва",
+          "article_ref": null,
+          "chunk_index": 9,
+          "chunk_id": 17,
+          "excerpt": "- Обычно **симметрично** направлению Москва — Санкт-Петербург по порядку величины; уточнять по текущему балансу порожних рейсов."
+        }
+      ],
+      "retrieval_debug": {
+        "top_k": 12,
+        "final_k": 6,
+        "used_chunks": 6,
+        "normalized_query": "москва — санкт-петербург, 20 т, 82 м³, тент, загрузка сегодня вечером. нужна рыночная ставка на автоперевозку.",
+        "scores": [
+          {
+            "chunk_id": 14,
+            "dist": 0.17404755378897618,
+            "rerank_score": 0.9134345450185827
+          },
+          {
+            "chunk_id": 16,
+            "dist": 0.19535402115951328,
+            "rerank_score": 0.8731766097898248
+          },
+          {
+            "chunk_id": 13,
+            "dist": 0.20209944709736405,
+            "rerank_score": 0.8543176796933567
+          },
+          {
+            "chunk_id": 15,
+            "dist": 0.1973211565137042,
+            "rerank_score": 0.8392039574663794
+          },
+          {
+            "chunk_id": 8,
+            "dist": 0.19923648372376868,
+            "rerank_score": 0.8385814761231085
+          },
+          {
+            "chunk_id": 17,
+            "dist": 0.22037557181821343,
+            "rerank_score": 0.8317112724924139
+          }
+        ],
+        "persona": "logistics",
+        "applied_filters": {
+          "categories": [
+            "freight"
+          ],
+          "source_types": [
+            "internal",
+            "law",
+            "template",
+            "other"
+          ]
+        },
+        "prompt_template_used": "logistics"
+      },
+      "model": "llama3:8b",
+      "mode": "balanced",
+      "persona": "logistics",
+      "llm_invoked": true
+    }
+  }
+]

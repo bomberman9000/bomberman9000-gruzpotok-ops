@@ -8,10 +8,41 @@ Write-Host ""
 Write-Host "Запускаю ClearType Tuner..." -ForegroundColor Yellow
 Write-Host ""
 
-# Запуск ClearType Tuner
-Start-Process "cttune.exe"
+# Проверка наличия ClearType Tuner
+$cttunePaths = @(
+    "$env:SystemRoot\System32\cttune.exe",
+    "$env:SystemRoot\SysWOW64\cttune.exe",
+    "cttune.exe"
+)
 
-Write-Host "[OK] ClearType Tuner открыт" -ForegroundColor Green
+$cttuneExe = $null
+foreach ($path in $cttunePaths) {
+    if (Test-Path $path) {
+        $cttuneExe = $path
+        break
+    }
+}
+
+if ($cttuneExe) {
+    try {
+        Start-Process $cttuneExe -ErrorAction Stop
+        Write-Host "[OK] ClearType Tuner открыт" -ForegroundColor Green
+    } catch {
+        Write-Host "[ERROR] Не удалось запустить ClearType Tuner: $_" -ForegroundColor Red
+        Write-Host "[INFO] Попробуйте запустить вручную:" -ForegroundColor Yellow
+        Write-Host "      $cttuneExe" -ForegroundColor White
+        exit 1
+    }
+} else {
+    Write-Host "[ERROR] ClearType Tuner не найден на системе" -ForegroundColor Red
+    Write-Host "[INFO] Попробуйте альтернативные способы:" -ForegroundColor Yellow
+    Write-Host "      1. Откройте Настройки Windows > Система > Экран > Дополнительные параметры масштабирования" -ForegroundColor White
+    Write-Host "      2. Или используйте: Настройки > Персонализация > Шрифты > Настройки ClearType" -ForegroundColor White
+    Write-Host ""
+    Write-Host "      Или выполните в PowerShell:" -ForegroundColor Cyan
+    Write-Host "      control /name Microsoft.Display" -ForegroundColor White
+    exit 1
+}
 Write-Host ""
 Write-Host "ИНСТРУКЦИЯ:" -ForegroundColor Cyan
 Write-Host "  1. Выберите монитор (если несколько)" -ForegroundColor White

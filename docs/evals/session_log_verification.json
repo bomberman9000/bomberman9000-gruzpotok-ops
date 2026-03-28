@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "source": "synthetic_post_fix_sample",
+  "note": "Пример выборки после точечного фикса по цене: ожидаемое снижение bad_price_range",
+  "cases": [
+    {
+      "request_id": "v-001",
+      "endpoint": "freight/sales-reply",
+      "persona": "logistics",
+      "prompt_profile": "logistics:negotiation|freight_quote",
+      "input_summary": "Полный запрос: маршрут, дата, FTL, тоннаж.",
+      "ai_summary": "Узкий коридор с перечисленными допущениями.",
+      "operator_action": "accept",
+      "reason_codes": [],
+      "useful": true,
+      "notes": "",
+      "timestamp": "2025-03-22T09:00:00Z"
+    },
+    {
+      "request_id": "v-002",
+      "endpoint": "freight/sales-reply",
+      "persona": "logistics",
+      "prompt_profile": "logistics:negotiation|freight_quote",
+      "input_summary": "Мало полей — модель запросила уточнения вместо вилки.",
+      "ai_summary": "Список вопросов по дате, ТС, объёму.",
+      "operator_action": "accept",
+      "reason_codes": [],
+      "useful": true,
+      "notes": "",
+      "timestamp": "2025-03-22T09:30:00Z"
+    },
+    {
+      "request_id": "v-003",
+      "endpoint": "freight/sales-reply",
+      "persona": "logistics",
+      "prompt_profile": "logistics:negotiation|freight_quote",
+      "input_summary": "LTL, регионы и дата указаны.",
+      "ai_summary": "Структурированный ответ, ориентир без размазанной вилки.",
+      "operator_action": "edit",
+      "reason_codes": ["formatting_problem"],
+      "useful": true,
+      "notes": "Только правка формата.",
+      "timestamp": "2025-03-22T10:00:00Z"
+    },
+    {
+      "request_id": "v-004",
+      "endpoint": "query",
+      "persona": "logistics",
+      "prompt_profile": "logistics:balanced|general",
+      "input_summary": "Общий вопрос по срокам.",
+      "ai_summary": "Шаблонный ответ.",
+      "operator_action": "reject",
+      "reason_codes": ["too_generic"],
+      "useful": false,
+      "notes": "",
+      "timestamp": "2025-03-22T11:00:00Z"
+    },
+    {
+      "request_id": "v-005",
+      "endpoint": "autoresponder",
+      "persona": "logistics",
+      "prompt_profile": "logistics:default|auto",
+      "input_summary": "Короткий входящий.",
+      "ai_summary": "Мало конкретики.",
+      "operator_action": "reject",
+      "reason_codes": ["too_generic"],
+      "useful": false,
+      "notes": "",
+      "timestamp": "2025-03-22T12:00:00Z"
+    }
+  ]
+}

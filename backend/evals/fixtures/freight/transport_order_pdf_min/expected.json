@@ -1,0 +1,5 @@
+{
+  "response_kind": "pdf",
+  "min_pdf_bytes": 500,
+  "require_disposition_attachment": true
+}

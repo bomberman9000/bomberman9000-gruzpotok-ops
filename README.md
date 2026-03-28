@@ -135,5 +135,11 @@ Checkpoint-Computer -Description "Перед оптимизацией Windows" -
 
 ---
 
+## Другие материалы в этом репозитории
+
+В этой же папке лежит подпроект **ГрузПоток** (backend, RAG, Docker): точка входа для разработки — **[docs/WORKSPACE_INDEX.md](docs/WORKSPACE_INDEX.md)**. Работа без постоянного интернета: **[docs/OFFLINE_AND_RESILIENCE.md](docs/OFFLINE_AND_RESILIENCE.md)**.
+
+---
+
 **Удачной оптимизации! 🎉**
 

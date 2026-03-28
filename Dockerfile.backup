@@ -1,0 +1,21 @@
+FROM alpine:3.18
+
+# Устанавливаем необходимые пакеты
+RUN apk add --no-cache \
+    postgresql-client \
+    bash \
+    gzip \
+    supercronic
+
+# Копируем скрипт бэкапа
+COPY backup.sh /usr/local/bin/backup.sh
+RUN chmod +x /usr/local/bin/backup.sh
+
+# Создаём директорию для бэкапов
+RUN mkdir -p /var/lib/postgresql/backups
+
+# Создаём crontab файл (бэкап каждый день в 2:00 AM)
+RUN echo "0 2 * * * /usr/local/bin/backup.sh" > /crontab.txt
+
+# Запускаем supercronic
+CMD ["supercronic", "/crontab.txt"]

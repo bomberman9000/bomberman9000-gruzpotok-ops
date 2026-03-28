@@ -1,0 +1,10 @@
+{
+  "name": "document_check_min",
+  "method": "POST",
+  "path": "/api/v1/ai/documents/check",
+  "body": {
+    "document_text": "Договор поставки №45 от 01.01.2025. Срок оплаты 10 дней. Поставка партиями.",
+    "document_type": "contract",
+    "debug": false
+  }
+}

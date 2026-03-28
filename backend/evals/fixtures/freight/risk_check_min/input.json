@@ -1,0 +1,11 @@
+{
+  "name": "freight_risk_check_min",
+  "method": "POST",
+  "path": "/api/v1/ai/freight/risk-check",
+  "body": {
+    "situation": "Новый контрагент, первый рейс Москва–Екатеринбург, документы только скан паспорта.",
+    "counterparty_info": "ИП, регистрация 3 месяца назад",
+    "route": "Москва – Екатеринбург",
+    "debug": false
+  }
+}

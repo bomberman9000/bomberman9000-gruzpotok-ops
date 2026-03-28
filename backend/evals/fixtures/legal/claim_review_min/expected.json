@@ -1,0 +1,10 @@
+{
+  "status_in": ["ok", "insufficient_data", "unavailable", "upstream_error"],
+  "min_citations": 0,
+  "meta": {
+    "endpoint_contains": "claim_review"
+  },
+  "heuristics": {
+    "review_needed_if_status": ["insufficient_data", "upstream_error"]
+  }
+}
