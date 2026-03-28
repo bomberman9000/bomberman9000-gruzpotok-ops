@@ -1,5 +1,7 @@
 # 🚀 Оптимизация Windows
 
+> **Стек ГрузПоток (AI, RAG, операторский UI, Docker):** [docs/DEVELOPER_SETUP.md](docs/DEVELOPER_SETUP.md) · CI: `.github/workflows/ci.yml`
+
 Набор PowerShell скриптов для оптимизации и настройки Windows 10/11.
 
 ## 📋 Содержание

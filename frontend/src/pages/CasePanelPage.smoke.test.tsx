@@ -24,7 +24,10 @@ describe("CasePanelPage", () => {
 
   it("renders panel", async () => {
     render(
-      <MemoryRouter initialEntries={["/panels/claim/x1"]}>
+      <MemoryRouter
+        initialEntries={["/panels/claim/x1"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <Routes>
           <Route path="/panels/:kind/:entityId" element={<CasePanelPage />} />
         </Routes>

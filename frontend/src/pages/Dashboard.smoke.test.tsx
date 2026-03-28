@@ -37,7 +37,7 @@ describe("Dashboard", () => {
 
   it("renders heading", async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Dashboard />
       </MemoryRouter>
     );
