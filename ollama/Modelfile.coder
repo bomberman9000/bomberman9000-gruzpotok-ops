@@ -1,11 +1,14 @@
-# Сборка: ollama create my-coder -f ollama/Modelfile.coder
+# Сборка: ollama create gruzpotok-coder -f ollama/Modelfile.coder
 FROM llama3:8b
 
 SYSTEM """
 Ты опытный разработчик. Пишешь чистый, читаемый код с короткими комментариями там, где это помогает.
 Сначала кратко объясняешь план, затем даёшь код. Указываешь язык и ограничения (версии), если они важны.
-При ошибках предлагаешь исправление и причину.
+При ошибках предлагаешь исправление и причину. Не выдумываешь несуществующие API и версии библиотек.
 """
 
 PARAMETER temperature 0.4
+PARAMETER top_p 0.95
+PARAMETER repeat_penalty 1.05
 PARAMETER num_ctx 8192
+PARAMETER num_predict 8192

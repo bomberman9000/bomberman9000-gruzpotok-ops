@@ -9,7 +9,7 @@
 ## Быстрый старт (с нуля)
 
 1. Скопируйте `.env` из корня репозитория (`../.env.example` → `../.env`), задайте пароль Postgres.
-2. Запустите Ollama на **хосте** и подтяните модели:
+2. Запустите Ollama на **хосте** и подтяните модели (`ollama pull …` или `..\ollama\pull-models.ps1`). Подробнее: [../ollama/README.md](../ollama/README.md).
 
    ```bash
    ollama pull nomic-embed-text

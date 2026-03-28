@@ -33,6 +33,19 @@ class Settings(BaseSettings):
 
     embedding_dimensions: int = Field(default=768, validation_alias="EMBEDDING_DIMENSIONS")
 
+    ollama_num_ctx: int = Field(
+        default=8192,
+        ge=512,
+        le=131072,
+        validation_alias="OLLAMA_NUM_CTX",
+        description="Размер контекста для /api/chat (options.num_ctx); совместимо с Modelfile.",
+    )
+    ollama_temperature: float | None = Field(
+        default=None,
+        validation_alias="OLLAMA_TEMPERATURE",
+        description="Если задано — передаётся в options.temperature и переопределяет дефолт модели.",
+    )
+
     rag_top_k: int = Field(default=12, validation_alias="RAG_TOP_K")
     rag_final_k: int = Field(default=6, validation_alias="RAG_FINAL_K")
     rag_mode_default: Literal["balanced", "strict", "draft"] = Field(

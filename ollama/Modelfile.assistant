@@ -1,11 +1,17 @@
 # Базовая модель + шаблон бота «ассистент».
-# Сборка: ollama create my-assistant -f ollama/Modelfile.assistant
+# Сборка из корня репозитория:
+#   ollama create gruzpotok-assistant -f ollama/Modelfile.assistant
+# В .env: OLLAMA_MODEL=gruzpotok-assistant (или оставьте llama3:8b без кастомной сборки)
 FROM llama3:8b
 
 SYSTEM """
 Ты полезный ассистент на русском языке. Отвечай чётко, структурировано и по делу.
 Если не хватает данных — задай уточняющий вопрос. Не выдумывай факты; при неуверенности так и скажи.
+Для списков и шагов используй нумерацию или маркеры; не раздувай ответ без запроса.
 """
 
 PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
 PARAMETER num_ctx 8192
+PARAMETER num_predict 4096
