@@ -54,6 +54,83 @@ curl -s -X POST http://localhost:8080/query \
 
 Ожидается: `health.status` не `ok` только если Ollama недоступна; `seed.status` = `completed`; в ответе `/query` есть `citations` с `source_path`, у `strict` при слабом retrieval — `llm_invoked: false`.
 
+## Document -> Ollama extraction layer
+
+Ollama сама по себе не читает PDF/DOCX/image binary. Для локального разбора документов добавлен отдельный extraction layer:
+
+`file -> detect type -> extract text -> normalize -> optional chunking -> Ollama`
+
+Что поддержано:
+- text-based PDF и многостраничные PDF;
+- scan-only PDF не считается “пустым”: если страницы есть, но text layer отсутствует, pipeline помечает это как scan/OCR-needed case;
+- DOCX (абзацы + базовое чтение таблиц);
+- TXT (`utf-8` / `utf-8-sig` / `cp1251`);
+- image (`.jpg` / `.jpeg` / `.png` / `.webp`) через OCR backend, если он доступен;
+- русский текст и сохранение извлечённого `.txt` в `artifacts/document-text/`;
+- сохранение structured analysis artifact в `artifacts/document-text/<original_name>.analysis.json`;
+- artifacts теперь versioned per run и не перетираются;
+- chunking для длинных документов с сохранением page ranges;
+- сценарии `summary`, `key_facts`, `claim_response`, `contract_risk_review`, `invoice_requisites`.
+- для `claim_response` — строгий JSON-first contract (`summary`, `extracted_facts`, `draft_reply`) с post-parse validation/repair.
+- для `claim_response` — two-pass flow: сначала structured facts, потом отдельный `draft_reply` только по `summary + extracted_facts`.
+- для `claim_response` — поддержка `reply_mode`: `auto`, `neutral`, `deny`, `request_documents`, `settlement`.
+- для всех типов документов — extraction quality metadata: `extraction_quality`, `quality_reasons`, `text_char_count`, `non_whitespace_char_count`.
+- для PDF также сохраняются parse/debug признаки: `extraction_status`, `text_layer_found`, `pages_present`, `pages_count`, `fallback_used`, `user_safe_reason`.
+
+Что не делается по умолчанию:
+- OCR не является основным путём;
+- `нет text layer` и `документ пуст` — разные состояния; для scan-only PDF возвращается tech notice о необходимости OCR/visual fallback, а не ложное “читать нечего”;
+- если PDF оказался сканом и текст не извлекается, вернётся понятная ошибка;
+- degraded OCR mode можно запрашивать явно через `--ocr-fallback`, но это не основной режим.
+
+Запуск:
+
+```bash
+python scripts/document_analyze.py --file "185 Шаталова ответ.pdf" --task claim_response
+python scripts/document_analyze.py --file "pretension.docx" --task claim_response
+python scripts/document_analyze.py --file "letter.txt" --task summary
+python scripts/document_analyze.py --file "scan.jpg" --task claim_response
+python scripts/document_analyze.py --file "185 Шаталова ответ.pdf" --task claim_response --json
+python scripts/document_analyze.py --file "185 Шаталова ответ.pdf" --task claim_response --reply-mode deny
+```
+
+Старый `scripts/pdf_analyze.py` оставлен как тонкий wrapper для backward compatibility.
+
+Артефакты именуются предсказуемо и без конфликта:
+
+`<safe_stem>.<task>.<run_id>.txt`
+
+`<safe_stem>.<task>.<run_id>.analysis.json`
+
+Где `run_id` включает UTC timestamp прогона и короткий префикс SHA-256 исходного файла. Полный hash и metadata сохраняются внутри `.analysis.json`.
+
+Ожидаемый вывод:
+- `PDF_ANALYZE=PASS` или `PDF_ANALYZE=FAIL`;
+- `extraction_method` и `extraction_quality`;
+- `quality_reasons` и `text_saved=...`;
+- `analysis_saved=...`;
+- `summary`;
+- `extracted_facts`;
+- `draft_reply` для `claim_response`;
+- `reply_mode_requested` и `reply_mode_effective` для `claim_response`;
+- в режиме `--json` — только чистый structured JSON без служебных строк.
+- в structured JSON также есть `analysis_saved_path`.
+- в structured JSON также есть `run_id`, `created_at_utc`, `source_file_name`, `source_file_hash_sha256`, `model_used`, `text_saved_path`, `analysis_saved_path`.
+
+Ограничения:
+- лимит размера файла и числа страниц проверяется до отправки в модель;
+- path input из API читается только внутри `RAG_DOCUMENT_INPUT_ROOT` (default: `/tmp/rag-document-input`);
+- относительные document paths считаются относительно `RAG_DOCUMENT_INPUT_ROOT`;
+- пути вне `RAG_DOCUMENT_INPUT_ROOT`, включая symlink escape, не читаются;
+- preview текста документов в логах выключен по умолчанию (`RAG_DOCUMENT_DEBUG_PREVIEW=false`);
+- битый или пустой PDF не отправляется в Ollama;
+- длинные документы режутся на chunk'и, но без облачных сервисов.
+- JSON repair ограничен minor-ошибками (markdown fences, trailing commas, smart quotes, простые single-quoted key/value); сломанный по смыслу ответ модели даёт понятную ошибку.
+- второй проход для `draft_reply` не видит сырой PDF-текст; это снижает риск домыслов, но качество письма всё равно зависит от качества extracted facts первого прохода.
+- `reply_mode=auto` при неполных facts переключается в безопасный `request_documents`; остальные режимы тоже остаются ограничены только переданными facts.
+- низкое `extraction_quality` не блокирует анализ, но CLI/JSON явно это показывают; для `claim_response` добавляется warning и safer/conservative поведение.
+- для image OCR требуется локальный backend (`pytesseract` + установленный Tesseract). Если backend не настроен, pipeline честно вернёт `OCR backend unavailable`.
+
 ## Примеры curl
 
 **1. Health**
@@ -204,6 +281,26 @@ curl -s "http://localhost:8080/documents/00000000-0000-0000-0000-000000000000"
 - `GET /documents`, `GET /documents/{id}` (с чанками)
 - `POST /ask` — legacy
 - ГрузПоток: `POST /legal/claim-review`, `POST /legal/claim-draft`, `POST /legal/claim-compose`, `POST /freight/risk-check`, `POST /freight/route-advice`, `POST /freight/document-check`, `POST /freight/transport-order-compose`, `POST /freight/transport-order-pdf` — см. [docs/GRUZPOTOK_API.md](docs/GRUZPOTOK_API.md)
+
+### Document-capable endpoint policy
+
+Document extraction включается только по явному allowlist policy:
+
+- `legal_claim_review` -> `claim_text`
+- `legal_claim_draft` -> `claim_text`
+- `legal_claim_compose` -> `facts`
+- `freight_document_check` -> `document_text`
+- `freight_transport_order_compose` -> `request_text`
+
+Для этих handlers локальный путь к поддерживаемому документу (`.pdf`, `.docx`, `.txt`, `.jpg`, `.jpeg`, `.png`, `.webp`) сначала проходит через extraction layer, и только потом текст уходит в prompt.
+
+Intentionally plain-text only:
+
+- `freight_risk_check`
+- `freight_route_advice`
+- generic `/query`
+
+Не расширяйте этот allowlist без обновления contract/regression tests на `document_input_policy`.
 
 ### Примеры curl (persona и прикладные endpoints)
 

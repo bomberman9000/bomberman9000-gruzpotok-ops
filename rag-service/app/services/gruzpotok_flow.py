@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import httpx
@@ -30,8 +31,15 @@ from app.services.business.rules import (
     validate_route_advice_input,
     validate_transport_order_compose_input,
 )
+from app.services.document_input_policy import (
+    DocumentInputRouteError,
+    log_document_prompt_input,
+    resolve_document_capable_input,
+)
 from app.services.json_extract import as_str_list, parse_claim_review_model_output, parse_json_object
 from app.services.rag_executor import RagExecuteResult, execute_rag_query
+
+logger = logging.getLogger(__name__)
 
 
 def _dbg(res: RagExecuteResult, debug: bool) -> RetrievalDebug | None:
@@ -55,14 +63,40 @@ async def legal_claim_review(
     client: httpx.AsyncClient,
     body: LegalClaimReviewRequest,
 ) -> LegalClaimReviewResponse:
-    miss = validate_claim_review_input(body.claim_text)
+    persona: PersonaId = "legal"
+    try:
+        claim_text, source_info = resolve_document_capable_input(
+            body.claim_text,
+            route_label="legal_claim_review",
+            logger=logger,
+        )
+    except DocumentInputRouteError as e:
+        return LegalClaimReviewResponse(
+            summary=f"Не удалось извлечь текст документа: {e}",
+            legal_risks=[],
+            missing_information=[f"document_input_error={e.code}"],
+            recommended_position="Исправьте источник документа и повторите запрос.",
+            citations=[],
+            llm_invoked=False,
+            persona=persona,
+            mode="strict",
+            retrieval_debug=None,
+        )
+    miss = validate_claim_review_input(claim_text)
     q = (
         f"Разбор претензии для внутреннего чек-листа (не финальная юрпозиция).\n"
-        f"Текст претензии:\n{body.claim_text.strip()}\n\n"
+        f"Текст претензии:\n{claim_text.strip()}\n\n"
         f"Контекст договора/условий:\n{(body.contract_context or '').strip()}\n\n"
         f"Контрагент: {(body.counterparty or '').strip()}"
     )
-    persona: PersonaId = "legal"
+    log_document_prompt_input(
+        logger,
+        handler_name="legal_claim_review",
+        task="claim_review",
+        source_info=source_info,
+        input_text=claim_text,
+        prompt_text=q,
+    )
     if miss:
         return LegalClaimReviewResponse(
             summary="Недостаточно входных данных для разбора.",
@@ -139,11 +173,36 @@ async def legal_claim_draft(
     body: LegalClaimDraftRequest,
 ) -> LegalClaimDraftResponse:
     persona: PersonaId = "legal"
+    try:
+        claim_text, source_info = resolve_document_capable_input(
+            body.claim_text,
+            route_label="legal_claim_draft",
+            logger=logger,
+        )
+    except DocumentInputRouteError as e:
+        return LegalClaimDraftResponse(
+            draft_response_text=f"Не удалось извлечь текст документа: {e}",
+            tone="n/a",
+            legal_basis=[],
+            disclaimers=[f"document_input_error={e.code}"],
+            citations=[],
+            llm_invoked=False,
+            persona=persona,
+            mode="draft",
+        )
     q = (
         "Подготовь ЧЕРНОВИК ответа на претензию (не финальный юридический документ; требуется проверка юристом).\n"
-        f"Текст претензии:\n{body.claim_text.strip()}\n"
+        f"Текст претензии:\n{claim_text.strip()}\n"
         f"Компания: {(body.company_name or '').strip()}\n"
         f"Подписант: {(body.signer or '').strip()}"
+    )
+    log_document_prompt_input(
+        logger,
+        handler_name="legal_claim_draft",
+        task="claim_draft",
+        source_info=source_info,
+        input_text=claim_text,
+        prompt_text=q,
     )
     res = await execute_rag_query(
         client,
@@ -209,7 +268,24 @@ async def legal_claim_compose(
 ) -> LegalClaimComposeResponse:
     """Черновик текста исходящей претензии (не ответа контрагенту)."""
     persona: PersonaId = "legal"
-    miss = validate_claim_compose_input(body.facts)
+    try:
+        facts, source_info = resolve_document_capable_input(
+            body.facts,
+            route_label="legal_claim_compose",
+            logger=logger,
+        )
+    except DocumentInputRouteError as e:
+        return LegalClaimComposeResponse(
+            draft_claim_text="",
+            missing_facts=[f"document_input_error={e.code}"],
+            disclaimers=["Не удалось извлечь текст документа. Исправьте источник и повторите запрос."],
+            citations=[],
+            llm_invoked=False,
+            persona=persona,
+            mode="draft",
+        )
+
+    miss = validate_claim_compose_input(facts)
     if miss:
         return LegalClaimComposeResponse(
             draft_claim_text="",
@@ -227,13 +303,21 @@ async def legal_claim_compose(
         "Используй структуру из контекста базы (шапка, факты, нарушение, требования, приложения, подпись). "
         "Не выдумывай номера статей закона, конкретные сроки давности и суммы, если их нет во входе или в чанках. "
         "Недостающие реквизиты обозначай плейсхолдерами в квадратных скобках.\n\n"
-        f"Факты и ситуация:\n{body.facts.strip()}\n\n"
+        f"Факты и ситуация:\n{facts.strip()}\n\n"
         f"Контекст договора/условий:\n{(body.contract_context or '').strip()}\n\n"
         f"Заявитель (мы): {(body.claimant_company or '').strip()}\n"
         f"Контрагент: {(body.counterparty or '').strip()}\n"
         f"Адрес контрагента: {(body.counterparty_address or '').strip()}\n"
         f"Требования (если указаны): {(body.demands or '').strip()}\n"
         f"Приложения (заметка): {(body.attachments_note or '').strip()}"
+    )
+    log_document_prompt_input(
+        logger,
+        handler_name="legal_claim_compose",
+        task="claim_compose",
+        source_info=source_info,
+        input_text=facts,
+        prompt_text=q,
     )
     res = await execute_rag_query(
         client,
@@ -300,7 +384,24 @@ async def freight_transport_order_compose(
     body: FreightTransportOrderComposeRequest,
 ) -> FreightTransportOrderComposeResponse:
     persona: PersonaId = "logistics"
-    miss = validate_transport_order_compose_input(body.request_text)
+    try:
+        request_text, source_info = resolve_document_capable_input(
+            body.request_text,
+            route_label="freight_transport_order_compose",
+            logger=logger,
+        )
+    except DocumentInputRouteError as e:
+        return FreightTransportOrderComposeResponse(
+            fields=FreightTransportOrderFields(),
+            missing_information=[f"document_input_error={e.code}"],
+            citations=[],
+            llm_invoked=False,
+            persona=persona,
+            mode="draft",
+            retrieval_debug=None,
+        )
+
+    miss = validate_transport_order_compose_input(request_text)
     if miss:
         return FreightTransportOrderComposeResponse(
             fields=FreightTransportOrderFields(),
@@ -319,7 +420,15 @@ async def freight_transport_order_compose(
         "сервер отдельно из этих полей (endpoint transport-order-pdf), языковая модель PDF не создаёт.\n"
         "Не выдумывай реквизиты, которых нет в тексте — оставь пустую строку и перечисли недостающее в "
         "missing_information. Числа и даты переноси как строки, как в запросе.\n\n"
-        f"Описание от пользователя:\n{body.request_text.strip()}"
+        f"Описание от пользователя:\n{request_text.strip()}"
+    )
+    log_document_prompt_input(
+        logger,
+        handler_name="freight_transport_order_compose",
+        task="transport_order_compose",
+        source_info=source_info,
+        input_text=request_text,
+        prompt_text=q,
     )
     res = await execute_rag_query(
         client,
@@ -541,10 +650,36 @@ async def freight_document_check(
     body: FreightDocumentCheckRequest,
 ) -> FreightDocumentCheckResponse:
     persona: PersonaId = "logistics"
+    try:
+        document_text, source_info = resolve_document_capable_input(
+            body.document_text,
+            route_label="freight_document_check",
+            logger=logger,
+        )
+    except DocumentInputRouteError as e:
+        return FreightDocumentCheckResponse(
+            detected_issues=[f"Не удалось извлечь текст документа: {e}"],
+            missing_fields=[f"document_input_error={e.code}"],
+            recommended_fixes=["Проверьте формат файла, OCR/backend и повторите запрос."],
+            compliance_notes=["Анализ не выполнялся: extraction layer не смог подготовить текст."],
+            citations=[],
+            llm_invoked=False,
+            persona=persona,
+            mode="balanced",
+            retrieval_debug=None,
+        )
     q = (
         "Проверка логистического/сопроводительного документа по материалам базы (best-effort).\n"
         f"Тип: {(body.document_type or '').strip()}\n"
-        f"Текст документа:\n{body.document_text.strip()}"
+        f"Текст документа:\n{document_text.strip()}"
+    )
+    log_document_prompt_input(
+        logger,
+        handler_name="freight_document_check",
+        task="document_check",
+        source_info=source_info,
+        input_text=document_text,
+        prompt_text=q,
     )
     res = await execute_rag_query(
         client,
