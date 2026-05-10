@@ -7,10 +7,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ollama_app
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ollama_app
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - backups:/var/lib/postgresql/backups
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -69,15 +69,16 @@ services:
       dockerfile: Dockerfile
     container_name: ollama-stack-rag
     restart: unless-stopped
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
     ports:
-      - "8080:8080"
+      - "18080:8080"
     environment:
-      DATABASE_URL: postgresql://ollama_app:changeme@postgres:5432/ollama_app
+      DATABASE_URL: ${RAG_DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
       LIBREOFFICE_SOFFICE_PATH: /usr/bin/soffice
       LIBREOFFICE_CONVERT_TIMEOUT_SEC: "120"
@@ -85,8 +86,8 @@ services:
       OLLAMA_BASE: http://host.docker.internal:11434
       EMBEDDING_MODEL: nomic-embed-text
       EMBED_MODEL: nomic-embed-text
-      OLLAMA_MODEL: llama3:8b
-      OLLAMA_CHAT_MODEL: llama3:8b
+      OLLAMA_MODEL: qwen2.5:3b
+      OLLAMA_CHAT_MODEL: qwen2.5:3b
       RAG_TOP_K: 12
       RAG_FINAL_K: 6
       RAG_MODE_DEFAULT: balanced
@@ -100,7 +101,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -117,6 +118,108 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ГрузПоток API — основной бэкенд (резервная копия с сервера 144.31.64.130).
+  # Использует локальную реплику gruzpotok DB и локальный Redis.
+  gruzpotok-api:
+    build:
+      context: ./goutruckme-api
+      dockerfile: Dockerfile
+    container_name: gruzpotok-api
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${GRUZPOTOK_API_DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      PUBLIC_BASE_URL: https://грузпоток.рф
+      BUILD_SHA: pc-standby
+      BUILD_TIME: ""
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      SECRET_KEY: ${SECRET_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM: noreply@xn--c1aijpaeftf.xn--p1ai
+      LOGIN_TOKEN_TTL_SECONDS: "300"
+      MAGIC_LINK_TTL_SECONDS: "300"
+      SYNC_WARMUP_TTL_SEC: "600"
+      DATABASE_POOL_SIZE: "4"
+      DATABASE_MAX_OVERFLOW: "4"
+      UVICORN_WORKERS: "1"
+      BOT_POLLING_ENABLED: "false"
+      TELEGRAM_WEBHOOK_SECRET_TOKEN: ${TELEGRAM_WEBHOOK_SECRET_TOKEN}
+      TG_BOT_URL: http://tg-bot:8000
+      TG_BOT_INTERNAL_URL: http://tg-bot:8000
+      TG_BOT_INTERNAL_EVENT_PATH: /internal/event
+      # AI engine — при failover недоступен, API деградирует gracefully
+      AI_ENGINE_URL: ""
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Telegram Bot — основной бот ГрузПотока (перенесён с сервера).
+  tg-bot:
+    build:
+      context: ./goutruckme-git
+      dockerfile: Dockerfile.pc
+    container_name: tg-bot
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      DATABASE_URL: ${TG_BOT_DATABASE_URL}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      SECRET_KEY: ${SECRET_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      AI_GATEWAY_ENABLED: ${AI_GATEWAY_ENABLED:-false}
+      AI_GATEWAY_PROVIDER: ${AI_GATEWAY_PROVIDER:-legacy}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # Backend ГрузПотока: интеграционный слой к rag-api (Telegram / Mini App / Web).
   gruzpotok-backend:
     build:
@@ -124,13 +227,14 @@ services:
       dockerfile: Dockerfile
     container_name: ollama-stack-gruzpotok-backend
     restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8090", "--proxy-headers", "--forwarded-allow-ips", "*"]
     depends_on:
       rag-api:
         condition: service_started
       postgres:
         condition: service_healthy
     ports:
-      - "8090:8090"
+      - "18090:8090"
     environment:
       RAG_API_BASE_URL: http://rag-api:8080
       RAG_API_TIMEOUT_SEC: 120
@@ -138,15 +242,17 @@ services:
       RAG_API_DEBUG_DEFAULT: "false"
       RAG_API_RETRY_COUNT: 2
       LOG_LEVEL: INFO
-      DATABASE_URL: postgresql://ollama_app:changeme@postgres:5432/ollama_app
+      DATABASE_URL: ${BACKEND_DATABASE_URL}
+      OPERATOR_UI_DIST: /app/frontend/dist
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - backend-logs:/app/logs
+      - ./frontend/dist:/app/frontend/dist
     networks:
       - default
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090/api/v1/internal/ai/calls || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -175,7 +281,7 @@ services:
         condition: service_healthy
     environment:
       POSTGRES_USER: ollama_app
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ollama_app
       PGHOST: postgres
       PGPORT: 5432
@@ -201,7 +307,7 @@ services:
     container_name: ollama-stack-prometheus
     restart: unless-stopped
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -229,9 +335,9 @@ services:
     container_name: ollama-stack-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://ollama_app:changeme@postgres:5432/ollama_app?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://ollama_app:${POSTGRES_PASSWORD}@postgres:5432/ollama_app?sslmode=disable"
     ports:
-      - "9187:9187"
+      - "127.0.0.1:9187:9187"
     depends_on:
       postgres:
         condition: service_healthy
@@ -257,7 +363,7 @@ services:
     environment:
       REDIS_ADDR: "redis:6379"
     ports:
-      - "9121:9121"
+      - "127.0.0.1:9121:9121"
     depends_on:
       - redis
     networks:
@@ -280,9 +386,9 @@ services:
     container_name: ollama-stack-grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_SECURITY_ADMIN_USER: admin
       GF_INSTALL_PLUGINS: grafana-piechart-panel
     volumes:
@@ -323,3 +429,4 @@ volumes:
 networks:
   default:
     driver: bridge
+
