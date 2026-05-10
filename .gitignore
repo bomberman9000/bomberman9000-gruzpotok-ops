@@ -36,3 +36,10 @@ venv/
 # Local standalone nested repositories
 goutruckme-git/
 goutruckme-api/
+
+# Local assistant and audit artifacts
+.claude/
+.cursor/
+_restore/
+_tmp_runner_check/
+git-status-*.txt
