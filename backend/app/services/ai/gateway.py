@@ -11,8 +11,39 @@ from app.services.ai.ai_call_service import record_ai_call
 from app.services.presentation.core import attach_presentation
 from app.services.presentation.entity_context import context_from_gateway
 from app.services.ai.rag_client import RagApiClient, RagCallError, normalize_raw
+from app.services.ai.gateway_wrapper import ai_gateway
 
 logger = logging.getLogger(__name__)
+
+
+def _remote_query_text(user_input: dict | None) -> str:
+    if not user_input:
+        return ""
+    for key in (
+        "query",
+        "claim_text",
+        "situation",
+        "route_request",
+        "document_text",
+        "request_text",
+        "text",
+    ):
+        value = user_input.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _remote_task_type(endpoint: str) -> str:
+    return {
+        "query": "rag.query",
+        "claim_review": "legal.claim_review",
+        "claim_draft": "legal.claim_draft",
+        "risk_check": "freight.risk_check",
+        "route_advice": "freight.route_advice",
+        "document_check": "freight.document_check",
+        "transport_order_compose": "freight.transport_order_compose",
+    }.get(endpoint, f"rag.{endpoint}")
 
 
 def build_meta(
@@ -85,10 +116,30 @@ async def run_ai_gateway(
         persist(envelope, rag_reachable=True, rag_error=None)
         return envelope
 
+    async def legacy_rag_call() -> tuple[dict, str, int]:
+        client = RagApiClient(s)
+        return await call(client)
+
+    async def remote_rag_call() -> tuple[dict, str, int]:
+        envelope = await ai_gateway.rag_query_async(
+            query=_remote_query_text(ui),
+            task_type=_remote_task_type(endpoint),
+            request_id=request_id,
+            metadata={"endpoint": endpoint, "rag_path": rag_path},
+            operation=f"backend.rag.{endpoint}",
+        )
+        result = envelope.get("result")
+        if not isinstance(result, dict):
+            raise RuntimeError("Remote RAG returned invalid result")
+        return result, request_id, int(envelope.get("duration_ms") or 0)
+
     t0 = time.perf_counter()
-    client = RagApiClient(s)
     try:
-        raw, rid, lm = await call(client)
+        raw, rid, lm = await ai_gateway.run_async(
+            f"backend.rag.{endpoint}",
+            legacy_rag_call,
+            remote_call=remote_rag_call,
+        )
         data = normalize_raw(endpoint, raw)
         attach_presentation(data, endpoint=endpoint, request_id=rid, user_input=ui)
         envelope = AIEnvelope(
