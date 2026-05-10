@@ -43,3 +43,6 @@ goutruckme-api/
 _restore/
 _tmp_runner_check/
 git-status-*.txt
+
+# Local PC standby env
+.env.pc-standby
