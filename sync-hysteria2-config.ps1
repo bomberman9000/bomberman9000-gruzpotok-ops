@@ -1,80 +1,69 @@
-# Sync Hysteria2 config between Windows and Mac
-# Run as Administrator!
+# Hysteria2 config sync template.
+# Old server config was intentionally removed.
+# Configure via env vars only.
+# Do not hardcode Hysteria2 auth/server in this file.
+
+$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+
+function Require-Env {
+    param([Parameter(Mandatory=$true)][string]$Name)
+
+    $value = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        Write-Host "[ERROR] Required environment variable is missing: $Name" -ForegroundColor Red
+        exit 1
+    }
+    return $value
+}
+
+function Optional-Env {
+    param(
+        [Parameter(Mandatory=$true)][string]$Name,
+        [Parameter(Mandatory=$true)][string]$Default
+    )
+
+    $value = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $Default
+    }
+    return $value
+}
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Hysteria2 Config Sync" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Current config
-$serverUrl = "hysteria2://Samara128500@144.31.64.130:4443/?sni=144.31.64.130&insecure=1#Hysteria2-Server"
+$server = Require-Env "HYSTERIA2_SERVER"
+$port = Require-Env "HYSTERIA2_PORT"
+$hysteriaAuth = Require-Env "HYSTERIA2_AUTH"
+$sni = Optional-Env "HYSTERIA2_SNI" $server
+$configPath = Optional-Env "HYSTERIA2_CONFIG_PATH" (Join-Path $env:USERPROFILE ".hysteria2\config.yaml")
+$insecure = Optional-Env "HYSTERIA2_INSECURE" "false"
 
-# Parse URL
-if ($serverUrl -match "hysteria2://([^@]+)@([^/]+)/([^#]+)#(.+)") {
-    $auth = $matches[1]
-    $server = $matches[2]
-    $params = $matches[3]
-    $name = $matches[4]
-    
-    $sni = $null
-    $insecure = $false
-    if ($params -match "sni=([^&]+)") {
-        $sni = $matches[1]
-    }
-    if ($params -match "insecure=1") {
-        $insecure = $true
-    }
+if ($port -notmatch "^\d+$") {
+    Write-Host "[ERROR] HYSTERIA2_PORT must be numeric" -ForegroundColor Red
+    exit 1
 }
 
-# Create universal config (compatible with both Windows and Mac)
-Write-Host "[1/3] Creating universal config..." -ForegroundColor Yellow
+if ($insecure -notin @("true", "false")) {
+    Write-Host "[ERROR] HYSTERIA2_INSECURE must be true or false" -ForegroundColor Red
+    exit 1
+}
 
-$configDir = "$env:USERPROFILE\.hysteria2"
+$configDir = Split-Path -Parent $configPath
 if (-not (Test-Path $configDir)) {
     New-Item -Path $configDir -ItemType Directory -Force | Out-Null
 }
 
-# Hysteria2 YAML config (works on both platforms)
+$serverEndpoint = "${server}:${port}"
 $configContent = @"
 # Hysteria2 Configuration
-# Compatible with Windows and macOS
+# Generated from environment variables.
 
-server: $server
-auth: $auth
-
-bandwidth:
-  up: 20 Mbps
-  down: 100 Mbps
-
-socks5:
-  listen: 127.0.0.1:1080
-
-http:
-  listen: 127.0.0.1:8080
-
-tls:
-  sni: $sni
-  insecure: $insecure
-
-# Platform-specific settings
-# Windows: Use HTTP proxy 127.0.0.1:8080
-# macOS: Use HTTP proxy 127.0.0.1:8080 or SOCKS5 127.0.0.1:1080
-"@
-
-$configFile = Join-Path $configDir "config.yaml"
-$configContent | Out-File -FilePath $configFile -Encoding UTF8
-Write-Host "  [OK] Config created: $configFile" -ForegroundColor Green
-
-# Create Mac-compatible config
-Write-Host ""
-Write-Host "[2/3] Creating Mac-compatible config..." -ForegroundColor Yellow
-
-$macConfigContent = @"
-# Hysteria2 Configuration for macOS
-# Copy this to: ~/.hysteria2/config.yaml
-
-server: $server
-auth: $auth
+server: $serverEndpoint
+auth: $hysteriaAuth
 
 bandwidth:
   up: 20 Mbps
@@ -91,112 +80,55 @@ tls:
   insecure: $insecure
 "@
 
-$macConfigFile = Join-Path $configDir "config-mac.yaml"
-$macConfigContent | Out-File -FilePath $macConfigFile -Encoding UTF8
-Write-Host "  [OK] Mac config created: $macConfigFile" -ForegroundColor Green
-
-# Create sync instructions
+Write-Host "[1/3] Writing local config..." -ForegroundColor Yellow
+$configContent | Out-File -FilePath $configPath -Encoding UTF8
+Write-Host "  [OK] Config created: $configPath" -ForegroundColor Green
+Write-Host "  Server: $serverEndpoint" -ForegroundColor Green
+Write-Host "  SNI: $sni" -ForegroundColor Green
+Write-Host "  Auth: [redacted]" -ForegroundColor Green
 Write-Host ""
-Write-Host "[3/3] Creating sync instructions..." -ForegroundColor Yellow
 
+Write-Host "[2/3] Writing portable config copy..." -ForegroundColor Yellow
+$portableConfigFile = Join-Path $configDir "config-portable.yaml"
+$configContent | Out-File -FilePath $portableConfigFile -Encoding UTF8
+Write-Host "  [OK] Portable config created: $portableConfigFile" -ForegroundColor Green
+Write-Host ""
+
+Write-Host "[3/3] Writing sync instructions..." -ForegroundColor Yellow
 $instructions = @"
 ========================================
   HYSTERIA2 CONFIG SYNC
 ========================================
 
-This config works on both Windows and Mac!
+Old server config was intentionally removed.
+Configure the new server through environment variables only.
+Do not hardcode Hysteria2 auth/server in repo files.
 
-========================================
-  WINDOWS CONFIG:
-========================================
+Required environment variables:
+  HYSTERIA2_SERVER
+  HYSTERIA2_PORT
+  HYSTERIA2_AUTH
 
-Location: $configFile
+Optional environment variables:
+  HYSTERIA2_SNI
+  HYSTERIA2_CONFIG_PATH
+  HYSTERIA2_INSECURE
 
-To use:
-  hysteria2.exe -c "$configFile"
+Windows config:
+  $configPath
 
-Or use the startup script:
-  .\start-hysteria2.ps1
+Portable config:
+  $portableConfigFile
 
-========================================
-  MAC CONFIG:
-========================================
+Run:
+  hysteria2 -c "<config-path>"
 
-1. Copy config to Mac:
-   Location: ~/.hysteria2/config.yaml
-
-2. On Mac, create directory:
-   mkdir -p ~/.hysteria2
-
-3. Copy config-mac.yaml content to:
-   ~/.hysteria2/config.yaml
-
-4. Start Hysteria2 on Mac:
-   hysteria2 -c ~/.hysteria2/config.yaml
-
-Or create a startup script:
-   #!/bin/bash
-   hysteria2 -c ~/.hysteria2/config.yaml &
-
-========================================
-  CONFIG DETAILS:
-========================================
-
-Server: $server
-Auth: $auth
-SNI: $sni
-Insecure: $insecure
-
-HTTP Proxy: 127.0.0.1:8080
-SOCKS5 Proxy: 127.0.0.1:1080
-
-========================================
-  SYNC METHODS:
-========================================
-
-METHOD 1 - Manual Copy:
-------------------------
-1. Copy config.yaml from Windows to Mac
-2. Place in ~/.hysteria2/config.yaml
-
-METHOD 2 - Cloud Sync:
------------------------
-1. Upload config.yaml to cloud (Dropbox, iCloud, etc.)
-2. Download on Mac
-3. Place in ~/.hysteria2/config.yaml
-
-METHOD 3 - Git/Syncing:
------------------------
-1. Store config in private Git repo
-2. Pull on both devices
-
+Auth is intentionally not printed here.
 ========================================
 "@
 
 $instructionsFile = Join-Path $configDir "SYNC_INSTRUCTIONS.txt"
 $instructions | Out-File -FilePath $instructionsFile -Encoding UTF8
 Write-Host "  [OK] Instructions created: $instructionsFile" -ForegroundColor Green
-
-# Display config for easy copy
 Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Config Created!" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Windows config: $configFile" -ForegroundColor White
-Write-Host "Mac config: $macConfigFile" -ForegroundColor White
-Write-Host ""
-Write-Host "To use on Mac:" -ForegroundColor Yellow
-Write-Host "  1. Copy config-mac.yaml to Mac" -ForegroundColor White
-Write-Host "  2. Place in: ~/.hysteria2/config.yaml" -ForegroundColor White
-Write-Host "  3. Run: hysteria2 -c ~/.hysteria2/config.yaml" -ForegroundColor White
-Write-Host ""
-
-
-
-
-
-
-
-
-
+Write-Host "Config sync complete. Auth was not printed." -ForegroundColor Green
