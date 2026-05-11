@@ -1,34 +1,36 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # PostgreSQL Backup Script
-# Автоматические резервные копии БД с ротацией
+# Creates compressed GruzPotok database dumps for the freshness monitor.
 
-set -e
+set -Eeuo pipefail
 
-BACKUP_DIR="/var/lib/postgresql/backups"
+BACKUP_DIR="${BACKUP_DIR:-/backups}"
 DB_USER="${POSTGRES_USER:-ollama_app}"
-DB_NAME="${POSTGRES_DB:-ollama_app}"
-RETENTION_DAYS=7
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="${BACKUP_DIR}/backup_${TIMESTAMP}.sql.gz"
+DB_NAME="${POSTGRES_DB:-gruzpotok}"
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-0}"
+export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
+RUN_STAMP=$(date +"%Y%m%d-%H%M")
+FILE_STAMP=$(date +"%Y%m%d_%H%M%S")
+RUN_DIR="${BACKUP_DIR}/${RUN_STAMP}"
+BACKUP_FILE="${RUN_DIR}/gruzpotok_${FILE_STAMP}.sql.gz"
 
-# Создаём директорию для бэкапов если её нет
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$RUN_DIR"
 
-echo "[$(date)] Начинаю резервную копию БД $DB_NAME..."
+echo "[$(date)] Starting PostgreSQL backup: db=${DB_NAME} target=${BACKUP_FILE}"
 
-# Создаём сжатый backup
-pg_dump -U "$DB_USER" "$DB_NAME" | gzip > "$BACKUP_FILE"
+pg_dump -U "$DB_USER" "$DB_NAME" | gzip -6 > "$BACKUP_FILE"
+gzip -t "$BACKUP_FILE"
 
-echo "[$(date)] Резервная копия завершена: $BACKUP_FILE"
+COPY_TABLES=$(gzip -cd "$BACKUP_FILE" | grep -Ec '^COPY ' || true)
+BYTES=$(stat -c %s "$BACKUP_FILE" 2>/dev/null || wc -c < "$BACKUP_FILE")
 
-# Очищаем старые бэкапы (старше RETENTION_DAYS)
-echo "[$(date)] Удаляю бэкапы старше $RETENTION_DAYS дней..."
-find "$BACKUP_DIR" -name "backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
+echo "[$(date)] Backup completed: file=${BACKUP_FILE} bytes=${BYTES} copy_tables=${COPY_TABLES}"
 
-# Показываем статистику
-echo "[$(date)] Статистика бэкапов:"
-du -sh "$BACKUP_DIR"
-ls -lh "$BACKUP_DIR" | tail -5
+if [ "$RETENTION_DAYS" -gt 0 ]; then
+    echo "[$(date)] Removing backup directories older than ${RETENTION_DAYS} days"
+    find "$BACKUP_DIR" -maxdepth 1 -type d -name '20??????-????' -mtime +"$RETENTION_DAYS" -exec rm -rf {} +
+fi
 
-echo "[$(date)] Готово!"
+ls -lh "$BACKUP_FILE"
+echo "[$(date)] Done"

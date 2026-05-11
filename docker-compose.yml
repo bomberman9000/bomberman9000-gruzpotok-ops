@@ -282,10 +282,12 @@ services:
     environment:
       POSTGRES_USER: ollama_app
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ollama_app
+      POSTGRES_DB: gruzpotok
       PGHOST: postgres
       PGPORT: 5432
+      BACKUP_DIR: /backups
     volumes:
+      - /media/zero/Storage1/gruzpotok-backups:/backups
       - backups:/var/lib/postgresql/backups
     networks:
       - default
