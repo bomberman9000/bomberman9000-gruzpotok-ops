@@ -46,3 +46,7 @@ git-status-*.txt
 
 # Local PC standby env
 .env.pc-standby
+
+# Backup files
+*.bak
+*.bak-*
