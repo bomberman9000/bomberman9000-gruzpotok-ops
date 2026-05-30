@@ -1,0 +1,222 @@
+/* Trust UI — mobile-first, dark-theme adapted */
+
+/* ── Badge (compact, for lists) ── */
+.trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: monospace, monospace;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.trust-badge.excellent { background: rgba(62, 207, 142, 0.18); color: #3ecf8e; }
+.trust-badge.good      { background: rgba(62, 207, 142, 0.12); color: #5dd4a8; }
+.trust-badge.caution   { background: rgba(245, 165, 36, 0.18); color: #f5a524; }
+.trust-badge.elevated  { background: rgba(240, 130, 50, 0.18); color: #f08030; }
+.trust-badge.high-risk { background: rgba(255, 85, 85, 0.18);  color: #ff5555; }
+.trust-badge.pending   { background: rgba(139, 155, 180, 0.15); color: #8b9bb4; }
+
+/* ── Card (full block for entity detail) ── */
+.trust-card {
+  border: 1px solid var(--border, #2d3a4d);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: var(--surface, #1a2332);
+}
+
+.trust-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.trust-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trust-tooltip-btn {
+  background: none;
+  border: 1px solid var(--border, #2d3a4d);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted, #8b9bb4);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.trust-tooltip-btn:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222c3c;
+  color: var(--text, #e8edf4);
+  border: 1px solid var(--border, #2d3a4d);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.trust-stale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #f5a524;
+  padding: 2px 6px;
+  border: 1px solid rgba(245, 165, 36, 0.35);
+  border-radius: 4px;
+}
+
+/* ── Score row ── */
+.trust-score-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.trust-progress {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.trust-progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.trust-progress-bar.excellent { background: #3ecf8e; }
+.trust-progress-bar.good      { background: #5dd4a8; }
+.trust-progress-bar.caution   { background: #f5a524; }
+.trust-progress-bar.elevated  { background: #f08030; }
+.trust-progress-bar.high-risk { background: #ff5555; }
+
+.trust-score-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+/* ── Verdict ── */
+.trust-verdict {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.trust-verdict.excellent,
+.trust-verdict.good      { color: #3ecf8e; }
+.trust-verdict.caution   { color: #f5a524; }
+.trust-verdict.elevated  { color: #f08030; }
+.trust-verdict.high-risk { color: #ff5555; }
+
+/* ── Lists ── */
+.trust-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.trust-list li {
+  padding: 0.15rem 0;
+}
+
+.trust-list.positives li { color: #3ecf8e; }
+.trust-list.warnings  li { color: #f5a524; }
+
+/* ── CTA ── */
+.trust-cta {
+  display: block;
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border, #2d3a4d);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--muted, #8b9bb4);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.trust-cta:hover {
+  background: rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+}
+
+/* ── Date ── */
+.trust-date {
+  font-size: 0.78rem;
+  color: var(--muted, #8b9bb4);
+  margin-top: 0.5rem;
+}
+
+.trust-date.stale {
+  color: #f5a524;
+}
+
+/* ── State variants ── */
+.trust-card-state {
+  color: var(--muted, #8b9bb4);
+  font-size: 0.875rem;
+}
+
+.trust-card-state p {
+  margin: 0.25rem 0;
+}
+
+.trust-refresh-btn {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border, #2d3a4d);
+  color: var(--muted, #8b9bb4);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* ── Responsive ── */
+@media (min-width: 480px) {
+  .trust-score-row {
+    gap: 1rem;
+  }
+
+  .trust-card {
+    padding: 1.25rem;
+  }
+}
