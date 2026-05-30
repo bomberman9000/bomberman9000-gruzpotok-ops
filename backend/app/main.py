@@ -15,6 +15,8 @@ from app.api.ai_operator_dashboard_routes import router as ai_operator_dashboard
 from app.api.ai_review_routes import router as ai_review_router
 from app.api.ai_routes import router as ai_router
 from app.api.internal_routes import router as internal_router
+from app.api.trust_routes import router as trust_router
+from app.api.internal_trust_routes import router as internal_trust_router
 from app.core.config import get_settings
 from app.db.migrate import run_migrations
 from app.middleware.internal_auth import InternalAuthMiddleware
@@ -71,6 +73,8 @@ app.include_router(ai_history_router)
 app.include_router(ai_review_router)
 app.include_router(ai_operator_dashboard_router)
 app.include_router(ai_ops_hardening_router)
+app.include_router(trust_router)
+app.include_router(internal_trust_router)
 
 
 @app.get("/health")

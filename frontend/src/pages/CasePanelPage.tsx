@@ -5,13 +5,19 @@ import type { CasePanel } from "../api/types";
 import { CitationsList } from "../components/CitationsList";
 import { StatusBadge } from "../components/StatusBadge";
 import { TrustCard } from "../components/trust/TrustCard";
-import { getMockProfile } from "../components/trust/trustMockData";
+import { useTrustProfile } from "../components/trust/useTrustProfile";
 
 export function CasePanelPage() {
   const { kind, entityId } = useParams<{ kind: string; entityId: string }>();
   const [panel, setPanel] = useState<CasePanel | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const trustSubjectType = kind === "freight" || kind === "claim" ? kind : undefined;
+  const { profile: trustProfile, loading: trustLoading } = useTrustProfile(
+    trustSubjectType,
+    entityId
+  );
 
   useEffect(() => {
     if (!kind || !entityId) return;
@@ -55,7 +61,7 @@ export function CasePanelPage() {
       <p>{panel.summary ?? "—"}</p>
 
       {(kind === "freight" || kind === "claim") && (
-        <TrustCard profile={getMockProfile(entityId ?? panel.panel_kind)} />
+        <TrustCard profile={trustProfile} loading={trustLoading} />
       )}
 
       <h2>AI результат</h2>

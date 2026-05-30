@@ -20,6 +20,7 @@ _EXEMPT_PREFIXES = (
     "/openapi.json",
     "/redoc",
     "/api/v1/ai",  # публичный контур AI (не internal)
+    "/api/v1/trust",  # публичный trust endpoint (browser/TWA safe)
 )
 
 

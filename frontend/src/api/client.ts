@@ -7,6 +7,8 @@ import type {
   QueuePanelResponse,
   TimelineEvent,
 } from "./types";
+import { mapTrustProfile } from "./trustMapper";
+import type { TrustProfile } from "./types";
 
 const base = () => (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 
@@ -137,6 +139,13 @@ export const api = {
         reason_codes: reason_codes ?? [],
       }),
     }),
+
+  trustProfile: async (subjectType: string, subjectId: string): Promise<TrustProfile> => {
+    const raw = await apiFetch<unknown>(
+      `/api/v1/trust/profile/${encodeURIComponent(subjectType)}/${encodeURIComponent(subjectId)}`
+    );
+    return mapTrustProfile(raw as Parameters<typeof mapTrustProfile>[0]);
+  },
 
   exportCallUrl: (callId: number) => `${base()}/api/v1/internal/ai/export/call/${callId}`,
   exportQueueUrl: () => `${base()}/api/v1/internal/ai/export/review-queue?limit=100`,

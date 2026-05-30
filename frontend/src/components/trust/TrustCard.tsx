@@ -1,6 +1,6 @@
-import './trust.css';
-import { verdictEmoji, levelClass } from './trustMockData';
-import type { TrustProfile } from './trustMockData';
+import "./trust.css";
+import type { TrustProfile } from "../../api/types";
+import { verdictEmoji, levelClass } from "./trustMockData";
 
 interface TrustCardProps {
   profile?: TrustProfile | null;
@@ -10,10 +10,10 @@ interface TrustCardProps {
 
 function formatDate(iso: string): string {
   try {
-    return new Intl.DateTimeFormat('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
+    return new Intl.DateTimeFormat("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     }).format(new Date(iso));
   } catch {
     return iso;
@@ -28,7 +28,7 @@ function TrustCardLoading() {
       </div>
       <div className="trust-card-state">
         <p>⏳ Проверяем…</p>
-        <p style={{ fontSize: '0.78rem' }}>обычно 30–60 сек</p>
+        <p style={{ fontSize: "0.78rem" }}>обычно 30–60 сек</p>
       </div>
     </div>
   );
@@ -65,12 +65,14 @@ function TrustCardFailed() {
 export function TrustCard({ profile, loading, isPremium = false }: TrustCardProps) {
   if (loading) return <TrustCardLoading />;
   if (!profile) return <TrustCardEmpty />;
-  if (profile.status === 'pending') return <TrustCardLoading />;
-  if (profile.status === 'failed') return <TrustCardFailed />;
+  if (profile.status === "pending") return <TrustCardLoading />;
+  if (profile.status === "failed") return <TrustCardFailed />;
+  if (profile.status === "empty") return <TrustCardEmpty />;
 
-  const isStale = profile.status === 'stale';
-  const cls = levelClass(profile.trust_level);
-  const emoji = verdictEmoji(profile.trust_level);
+  const isStale = profile.status === "stale";
+  const level = profile.trustLevel!;
+  const cls = levelClass(level);
+  const emoji = verdictEmoji(level);
 
   return (
     <div className="trust-card">
@@ -89,14 +91,20 @@ export function TrustCard({ profile, loading, isPremium = false }: TrustCardProp
         {isStale && <span className="trust-stale-badge">🕐 Данные устарели</span>}
       </div>
 
-      <div className="trust-score-row">
-        <div className="trust-progress" role="progressbar" aria-valuenow={profile.trust_score} aria-valuemin={0} aria-valuemax={100}>
+      <div
+        className="trust-score-row"
+        role="progressbar"
+        aria-valuenow={profile.trustScore ?? 0}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="trust-progress">
           <div
             className={`trust-progress-bar ${cls}`}
-            style={{ width: `${profile.trust_score}%` }}
+            style={{ width: `${profile.trustScore ?? 0}%` }}
           />
         </div>
-        <span className="trust-score-value">{profile.trust_score}/100</span>
+        <span className="trust-score-value">{profile.trustScore}/100</span>
       </div>
 
       <div className={`trust-verdict ${cls}`}>
@@ -125,10 +133,12 @@ export function TrustCard({ profile, loading, isPremium = false }: TrustCardProp
         </a>
       )}
 
-      <div className={`trust-date ${isStale ? 'stale' : ''}`}>
-        Проверено: {formatDate(profile.checked_at)}
-        {isStale && ' · устарело'}
-      </div>
+      {profile.checkedAt && (
+        <div className={`trust-date ${isStale ? "stale" : ""}`}>
+          Проверено: {formatDate(profile.checkedAt)}
+          {isStale && " · устарело"}
+        </div>
+      )}
     </div>
   );
 }

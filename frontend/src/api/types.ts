@@ -1,5 +1,24 @@
 /** DTOs — подмножество полей backend JSON */
 
+export type TrustLevel = "excellent" | "good" | "caution" | "elevated" | "high_risk";
+export type TrustStatus = "fresh" | "stale" | "empty" | "pending" | "failed";
+
+export interface TrustProfile {
+  subjectType: string;
+  subjectId: string;
+  trustScore: number | null;
+  trustLevel: TrustLevel | null;
+  status: TrustStatus;
+  verdict: string | null;
+  positives: string[];
+  warnings: string[];
+  checkedAt: string | null;
+  expiresAt: string | null;
+  canRefresh: boolean;
+  isPremium: boolean;
+  fullReport: string | null;
+}
+
 export interface DashboardSummary {
   total_calls_24h: number;
   total_calls_7d: number;
