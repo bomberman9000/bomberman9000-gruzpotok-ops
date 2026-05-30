@@ -4,6 +4,8 @@ import { api } from "../api/client";
 import type { CasePanel } from "../api/types";
 import { CitationsList } from "../components/CitationsList";
 import { StatusBadge } from "../components/StatusBadge";
+import { TrustCard } from "../components/trust/TrustCard";
+import { getMockProfile } from "../components/trust/trustMockData";
 
 export function CasePanelPage() {
   const { kind, entityId } = useParams<{ kind: string; entityId: string }>();
@@ -51,6 +53,10 @@ export function CasePanelPage() {
 
       <h2>Кратко</h2>
       <p>{panel.summary ?? "—"}</p>
+
+      {(kind === "freight" || kind === "claim") && (
+        <TrustCard profile={getMockProfile(entityId ?? panel.panel_kind)} />
+      )}
 
       <h2>AI результат</h2>
       <pre

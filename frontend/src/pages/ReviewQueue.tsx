@@ -4,6 +4,8 @@ import { api } from "../api/client";
 import type { QueuePanelResponse } from "../api/types";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { useToast } from "../context/ToastContext";
+import { TrustBadge } from "../components/trust/TrustBadge";
+import { MOCK_PROFILES } from "../components/trust/trustMockData";
 
 const QK = {
   persona: "gp_q_persona",
@@ -125,6 +127,7 @@ export function ReviewQueue() {
           <div key={idx} className="queue-card">
             <div className="row">
               <strong>{it.title}</strong>
+              <TrustBadge profile={MOCK_PROFILES[idx % MOCK_PROFILES.length]} />
               <span className="badge">{it.persona_badge}</span>
               <span className="badge warn">{it.status_badge}</span>
               {(it.review_reason_badges ?? []).map((b) => (
