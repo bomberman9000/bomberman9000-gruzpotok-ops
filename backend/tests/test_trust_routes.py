@@ -1,7 +1,22 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
+
+from app.schemas.trust import TrustLevel, TrustProfileInternal, TrustStatus
+
+
+# ── Fixtures ───────────────────────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    from app.services.trust import cache as trust_cache
+    trust_cache.clear()
+    yield
+    trust_cache.clear()
 
 
 @pytest.fixture()
@@ -9,10 +24,8 @@ def client(monkeypatch):
     monkeypatch.delenv("INTERNAL_AUTH_ENABLED", raising=False)
     monkeypatch.delenv("INTERNAL_AUTH_TOKEN", raising=False)
     from app.core.config import get_settings
-
     get_settings.cache_clear()
     from app.main import app
-
     return TestClient(app)
 
 
@@ -21,11 +34,40 @@ def authed_client(monkeypatch):
     monkeypatch.setenv("INTERNAL_AUTH_ENABLED", "true")
     monkeypatch.setenv("INTERNAL_AUTH_TOKEN", "test-secret")
     from app.core.config import get_settings
-
     get_settings.cache_clear()
     from app.main import app
-
     return TestClient(app)
+
+
+def _make_profile(
+    subject_type: str = "company",
+    subject_id: str = "123",
+    trust_score: int = 85,
+    trust_level: TrustLevel = TrustLevel.excellent,
+    status: TrustStatus = TrustStatus.fresh,
+    expires_at: str | None = None,
+) -> TrustProfileInternal:
+    now = datetime.now(tz=timezone.utc)
+    return TrustProfileInternal(
+        subject_type=subject_type,
+        subject_id=subject_id,
+        trust_score=trust_score,
+        trust_level=trust_level,
+        status=status,
+        verdict="Можно работать",
+        positives=["Работает 7 лет"],
+        warnings=[],
+        checked_at=now.isoformat(),
+        expires_at=expires_at or (now + timedelta(hours=24)).isoformat(),
+        can_refresh=False,
+        is_premium=False,
+        full_report=None,
+        source="test_source",
+        report_version="1.0",
+        internal_flags=["test_flag"],
+        agent_run_id="run-uuid-1",
+        refresh_count_24h=0,
+    )
 
 
 # ── Public endpoint ────────────────────────────────────────────────────────────
@@ -63,11 +105,10 @@ def test_trust_public_does_not_expose_internal_fields(client):
     assert "refresh_count_24h" not in data
 
 
-def test_trust_public_deterministic(client):
+def test_trust_public_consistent(client):
     r1 = client.get("/api/v1/trust/profile/company/7712345678")
     r2 = client.get("/api/v1/trust/profile/company/7712345678")
-    assert r1.json()["trust_score"] == r2.json()["trust_score"]
-    assert r1.json()["trust_level"] == r2.json()["trust_level"]
+    assert r1.json()["status"] == r2.json()["status"]
 
 
 def test_trust_public_no_token_required(authed_client):
@@ -95,14 +136,15 @@ def test_trust_internal_ok_with_token(authed_client):
     assert "refresh_count_24h" in data
 
 
-def test_trust_internal_includes_extra_fields(client):
+def test_trust_internal_includes_schema_fields(client):
     r = client.get("/api/v1/internal/ai/trust/profile/company/123")
     assert r.status_code == 200
     data = r.json()
+    assert "internal_flags" in data
+    assert "source" in data
+    assert "report_version" in data
+    assert "refresh_count_24h" in data
     assert isinstance(data["internal_flags"], list)
-    assert data["source"] == "p1_deterministic_stub"
-    assert data["report_version"] == "0.1"
-    assert data["refresh_count_24h"] == 0
 
 
 def test_trust_internal_invalid_type(client):
@@ -146,3 +188,153 @@ def test_trust_profile_shape(client):
     assert data["can_refresh"] is False
     assert data["is_premium"] is False
     assert data["full_report"] is None
+
+
+# ── P2: DB storage logic ───────────────────────────────────────────────────────
+
+def test_profile_not_found_returns_empty(client):
+    with patch("app.services.trust.db_repository.get_profile", return_value=None):
+        r = client.get("/api/v1/trust/profile/company/nonexistent-999")
+    assert r.status_code == 200
+    assert r.json()["status"] == "empty"
+    assert r.json()["trust_score"] is None
+
+
+def test_profile_fresh(client):
+    profile = _make_profile(status=TrustStatus.fresh)
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile):
+        r = client.get("/api/v1/trust/profile/company/123")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "fresh"
+    assert data["trust_score"] == 85
+    assert data["trust_level"] == "excellent"
+    assert data["verdict"] == "Можно работать"
+
+
+def test_profile_stale(client):
+    past = (datetime.now(tz=timezone.utc) - timedelta(hours=1)).isoformat()
+    profile = _make_profile(status=TrustStatus.stale, expires_at=past)
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile):
+        r = client.get("/api/v1/trust/profile/company/123")
+    assert r.status_code == 200
+    assert r.json()["status"] == "stale"
+
+
+def test_public_hides_internal_fields_with_db_profile(client):
+    profile = _make_profile()
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile):
+        r = client.get("/api/v1/trust/profile/company/123")
+    data = r.json()
+    assert "source" not in data
+    assert "internal_flags" not in data
+    assert "agent_run_id" not in data
+    assert "report_version" not in data
+    assert "refresh_count_24h" not in data
+
+
+def test_internal_shows_all_fields_with_db_profile(client):
+    profile = _make_profile()
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile):
+        r = client.get("/api/v1/internal/ai/trust/profile/company/123")
+    data = r.json()
+    assert data["source"] == "test_source"
+    assert data["report_version"] == "1.0"
+    assert data["internal_flags"] == ["test_flag"]
+    assert data["agent_run_id"] == "run-uuid-1"
+    assert data["refresh_count_24h"] == 0
+
+
+def test_cache_hit_skips_db(client):
+    profile = _make_profile()
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile) as mock_db:
+        client.get("/api/v1/trust/profile/company/cache-test-id")
+        client.get("/api/v1/trust/profile/company/cache-test-id")
+    assert mock_db.call_count == 1
+
+
+def test_cache_miss_after_refresh(client):
+    profile = _make_profile(subject_id="refresh-test-id")
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile) as mock_db:
+        client.get("/api/v1/trust/profile/company/refresh-test-id")
+        client.post(
+            "/api/v1/internal/ai/trust/refresh",
+            json={"subject_type": "company", "subject_id": "refresh-test-id"},
+        )
+        client.get("/api/v1/trust/profile/company/refresh-test-id")
+    assert mock_db.call_count == 2
+
+
+# ── P2: DB repository unit ─────────────────────────────────────────────────────
+
+def test_normalize_subject_id():
+    from app.services.trust.db_repository import normalize_subject_id
+    assert normalize_subject_id("  7712345678  ") == "7712345678"
+    assert normalize_subject_id("ABC-123") == "abc-123"
+
+
+def test_resolve_status_fresh():
+    from app.services.trust.db_repository import _resolve_status
+    future = datetime.now(tz=timezone.utc) + timedelta(hours=24)
+    assert _resolve_status("fresh", future) == TrustStatus.fresh
+
+
+def test_resolve_status_stale_by_expires_at():
+    from app.services.trust.db_repository import _resolve_status
+    past = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    assert _resolve_status("fresh", past) == TrustStatus.stale
+
+
+def test_resolve_status_no_expires_at():
+    from app.services.trust.db_repository import _resolve_status
+    assert _resolve_status("empty", None) == TrustStatus.empty
+
+
+# ── P2: Cache unit ─────────────────────────────────────────────────────────────
+
+def test_cache_set_get():
+    from app.services.trust import cache as c
+    c.set("k1", "value1", ttl_seconds=60)
+    assert c.get("k1") == "value1"
+
+
+def test_cache_miss():
+    from app.services.trust import cache as c
+    assert c.get("nonexistent") is None
+
+
+def test_cache_delete():
+    from app.services.trust import cache as c
+    c.set("k2", "v2", ttl_seconds=60)
+    c.delete("k2")
+    assert c.get("k2") is None
+
+
+def test_cache_ttl_expired(monkeypatch):
+    import time
+    from app.services.trust import cache as c
+    base = time.monotonic()
+    c.set("k3", "v3", ttl_seconds=1)
+    monkeypatch.setattr(time, "monotonic", lambda: base + 3)
+    assert c.get("k3") is None
+
+
+def test_cache_key_format():
+    from app.services.trust import cache as c
+    assert c.cache_key("company", "123") == "trust:profile:company:123"
+
+
+# ── Migration check ────────────────────────────────────────────────────────────
+
+def test_migration_not_destructive():
+    from pathlib import Path
+    sql = (Path(__file__).parent.parent / "app/db/migrations/004_trust_profiles.sql").read_text()
+    for bad in ("DROP TABLE", "DELETE FROM", "TRUNCATE", "ALTER TABLE"):
+        assert bad.upper() not in sql.upper(), f"Destructive SQL found: {bad}"
+
+
+def test_migration_idempotent_keywords():
+    from pathlib import Path
+    sql = (Path(__file__).parent.parent / "app/db/migrations/004_trust_profiles.sql").read_text()
+    assert "CREATE TABLE IF NOT EXISTS" in sql
+    assert "CREATE INDEX IF NOT EXISTS" in sql

@@ -8,7 +8,7 @@ from app.schemas.trust import (
     TrustRefreshRequest,
     TrustRefreshResponse,
 )
-from app.services.trust.profile_service import get_internal_profile
+from app.services.trust.profile_service import get_internal_profile, invalidate_cache
 
 router = APIRouter(prefix="/api/v1/internal/ai/trust", tags=["trust-internal"])
 
@@ -24,4 +24,5 @@ async def trust_profile_internal(subject_type: str, subject_id: str) -> TrustPro
 
 @router.post("/refresh", response_model=TrustRefreshResponse)
 async def trust_refresh_stub(body: TrustRefreshRequest) -> TrustRefreshResponse:
+    invalidate_cache(body.subject_type.value, body.subject_id)
     return TrustRefreshResponse(queued=False, estimated_seconds=None, run_id=None, status="stub")
