@@ -5,10 +5,15 @@ from fastapi import APIRouter, HTTPException
 from app.schemas.trust import (
     SubjectType,
     TrustProfileInternal,
+    TrustProfileWriteRequest,
     TrustRefreshRequest,
     TrustRefreshResponse,
 )
-from app.services.trust.profile_service import get_internal_profile, invalidate_cache
+from app.services.trust.profile_service import (
+    get_internal_profile,
+    invalidate_cache,
+    write_profile,
+)
 
 router = APIRouter(prefix="/api/v1/internal/ai/trust", tags=["trust-internal"])
 
@@ -20,6 +25,15 @@ async def trust_profile_internal(subject_type: str, subject_id: str) -> TrustPro
     if subject_type not in _VALID_TYPES:
         raise HTTPException(status_code=422, detail=f"Invalid subject_type: {subject_type!r}")
     return get_internal_profile(subject_type, subject_id)
+
+
+@router.post("/profile/{subject_type}/{subject_id}", response_model=TrustProfileInternal)
+async def trust_profile_write(
+    subject_type: str, subject_id: str, body: TrustProfileWriteRequest
+) -> TrustProfileInternal:
+    if subject_type not in _VALID_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid subject_type: {subject_type!r}")
+    return write_profile(subject_type, subject_id, body)
 
 
 @router.post("/refresh", response_model=TrustRefreshResponse)

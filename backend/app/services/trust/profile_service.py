@@ -3,7 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from app.schemas.trust import TrustProfileInternal, TrustProfilePublic, TrustStatus
+from app.schemas.trust import (
+    TrustProfileInternal,
+    TrustProfilePublic,
+    TrustProfileWriteRequest,
+    TrustStatus,
+)
 from app.services.trust import cache as trust_cache
 from app.services.trust import db_repository
 
@@ -72,6 +77,40 @@ def get_internal_profile(subject_type: str, subject_id: str) -> TrustProfileInte
         return _failed_internal(subject_type, subject_id)
     if profile is None:
         return _empty_internal(subject_type, subject_id)
+    return profile
+
+
+def write_profile(
+    subject_type: str, subject_id: str, body: TrustProfileWriteRequest
+) -> TrustProfileInternal:
+    """Persist an internal trust profile via the existing upsert, then drop the
+    in-process cache entry so the next read reflects the new write.
+
+    Returns the internal profile that was written.
+    """
+    profile = TrustProfileInternal(
+        subject_type=subject_type,
+        subject_id=subject_id,
+        trust_score=body.trust_score,
+        trust_level=body.trust_level,
+        status=TrustStatus.fresh,
+        verdict=body.verdict,
+        positives=body.positives,
+        warnings=body.warnings,
+        checked_at=body.checked_at.isoformat(),
+        expires_at=body.expires_at.isoformat(),
+        can_refresh=False,
+        is_premium=False,
+        full_report=None,
+        source=body.source,
+        report_version=body.report_version,
+        internal_flags=body.internal_flags,
+        agent_run_id=body.agent_run_id,
+        refresh_count_24h=0,
+    )
+    db_repository.upsert_profile(profile)
+    # Invalidate the in-process cache (same key the read path populates).
+    trust_cache.delete(trust_cache.cache_key(subject_type, subject_id))
     return profile
 
 

@@ -338,3 +338,120 @@ def test_migration_idempotent_keywords():
     sql = (Path(__file__).parent.parent / "app/db/migrations/004_trust_profiles.sql").read_text()
     assert "CREATE TABLE IF NOT EXISTS" in sql
     assert "CREATE INDEX IF NOT EXISTS" in sql
+
+
+# ── P3: Internal write path ─────────────────────────────────────────────────────
+
+_WRITE_URL = "/api/v1/internal/ai/trust/profile/company/777"
+
+
+def _write_body(
+    trust_score: int = 85,
+    trust_level: str = "excellent",
+    checked_at: str | None = None,
+    expires_at: str | None = None,
+    **overrides,
+) -> dict:
+    now = datetime.now(tz=timezone.utc)
+    body = {
+        "trust_score": trust_score,
+        "trust_level": trust_level,
+        "verdict": "Можно работать",
+        "positives": ["Работает 7 лет"],
+        "warnings": [],
+        "internal_flags": ["test_flag"],
+        "source": "ai_agent",
+        "report_version": "1.0",
+        "agent_run_id": "run-uuid-1",
+        "checked_at": checked_at or now.isoformat(),
+        "expires_at": expires_at or (now + timedelta(hours=24)).isoformat(),
+    }
+    body.update(overrides)
+    return body
+
+
+def test_write_fresh_profile(client):
+    with patch("app.services.trust.db_repository.upsert_profile") as mock_up:
+        r = client.post(_WRITE_URL, json=_write_body())
+    assert r.status_code == 200
+    data = r.json()
+    assert data["trust_score"] == 85
+    assert data["trust_level"] == "excellent"
+    assert data["status"] == "fresh"
+    assert data["verdict"] == "Можно работать"
+    assert mock_up.call_count == 1
+
+
+def test_write_updates_existing(client):
+    with patch("app.services.trust.db_repository.upsert_profile") as mock_up:
+        r1 = client.post(_WRITE_URL, json=_write_body(trust_score=85))
+        r2 = client.post(_WRITE_URL, json=_write_body(trust_score=42, trust_level="caution"))
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r2.json()["trust_score"] == 42
+    assert r2.json()["trust_level"] == "caution"
+    assert mock_up.call_count == 2
+
+
+def test_write_public_sees_safe_fields_only(client):
+    written = _make_profile(subject_id="pub-id")
+    with patch("app.services.trust.db_repository.upsert_profile"), \
+         patch("app.services.trust.db_repository.get_profile", return_value=written):
+        w = client.post("/api/v1/internal/ai/trust/profile/company/pub-id", json=_write_body())
+        assert w.status_code == 200
+        r = client.get("/api/v1/trust/profile/company/pub-id")
+    assert r.status_code == 200
+    data = r.json()
+    for field in ("source", "internal_flags", "agent_run_id", "report_version", "refresh_count_24h"):
+        assert field not in data
+
+
+def test_write_internal_sees_full_fields(client):
+    with patch("app.services.trust.db_repository.upsert_profile"):
+        r = client.post(_WRITE_URL, json=_write_body())
+    assert r.status_code == 200
+    data = r.json()
+    assert data["source"] == "ai_agent"
+    assert data["report_version"] == "1.0"
+    assert data["internal_flags"] == ["test_flag"]
+    assert data["agent_run_id"] == "run-uuid-1"
+    assert "refresh_count_24h" in data
+
+
+def test_write_invalid_score_rejected(client):
+    with patch("app.services.trust.db_repository.upsert_profile") as mock_up:
+        r = client.post(_WRITE_URL, json=_write_body(trust_score=150))
+    assert r.status_code == 422
+    assert mock_up.call_count == 0
+
+
+def test_write_invalid_level_rejected(client):
+    with patch("app.services.trust.db_repository.upsert_profile") as mock_up:
+        r = client.post(_WRITE_URL, json=_write_body(trust_level="super_bad"))
+    assert r.status_code == 422
+    assert mock_up.call_count == 0
+
+
+def test_write_expires_before_checked_rejected(client):
+    now = datetime.now(tz=timezone.utc)
+    body = _write_body(
+        checked_at=now.isoformat(),
+        expires_at=(now - timedelta(hours=1)).isoformat(),
+    )
+    with patch("app.services.trust.db_repository.upsert_profile") as mock_up:
+        r = client.post(_WRITE_URL, json=body)
+    assert r.status_code == 422
+    assert mock_up.call_count == 0
+
+
+def test_write_invalidates_cache(client):
+    profile = _make_profile(subject_id="cache-write-id")
+    with patch("app.services.trust.db_repository.get_profile", return_value=profile) as mock_db, \
+         patch("app.services.trust.db_repository.upsert_profile"):
+        client.get("/api/v1/trust/profile/company/cache-write-id")   # populates cache
+        client.post(
+            "/api/v1/internal/ai/trust/profile/company/cache-write-id",
+            json=_write_body(),
+        )                                                            # invalidates cache
+        client.get("/api/v1/trust/profile/company/cache-write-id")   # cache miss -> DB again
+    assert mock_db.call_count == 2
