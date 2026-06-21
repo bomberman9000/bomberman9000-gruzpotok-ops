@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "doctor": "npx react-doctor@latest .",
+    "doctor:report": "mkdir -p reports && npx react-doctor@latest . | tee reports/react-doctor-report.txt"
   },
   "dependencies": {
     "react": "^18.3.1",

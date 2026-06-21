@@ -72,6 +72,20 @@ Approval in one session does NOT carry over to the next.
 
 ---
 
+## React Doctor (UI patches)
+
+Before major React / Mobile V3 / TWA UI patches, run React Doctor and attach the summary.
+React Doctor is currently **report-only** — it does not block deploy.
+Do not mass-fix or rewrite UI only to improve the score.
+
+```bash
+cd goutruckme-api/frontend/twa && npm run doctor:report
+```
+
+Full policy: `REACT_DOCTOR_POLICY.md`
+
+---
+
 ## After Code Changes
 
 - Update `README.md → Current Status` if runtime state changes.
