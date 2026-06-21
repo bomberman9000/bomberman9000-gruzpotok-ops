@@ -1,162 +1,118 @@
-# 🔒 PostgreSQL Backup Guide
+# BACKUP.md — ГрузПоток
 
-## Automatic Backups (Scheduled)
+**Last updated:** 2026-06-21
 
-The `postgres-backup` container runs automatic backups every day at **2:00 AM UTC**.
+---
 
-- **Backup location**: Docker volume `project_backups` (mapped to container `/var/lib/postgresql/backups`)
-- **Schedule**: `0 2 * * *` (2:00 AM daily)
-- **Retention**: 7 days (old backups are auto-deleted)
-- **Tool**: supercronic + pg_dump
+## 1. Daily Backup (Automatic)
 
-### Checking Backup Status
+Ежедневный полный бэкап запускается планировщиком внутри контейнера `Postgres Backup`
+(см. `docker-compose.yml`, сервис `postgres-backup`).
+
+- **Schedule**: `0 2 * * *` (02:00 UTC)
+- **Tool**: supercronic + pg_dump + gzip
+- **Базы данных**: `botdb` (user `bot`) + `gruzpotok`
+- **Расположение на сервере**: `/root/backups/postgres/`
+- **Формат файлов**: `botdb_YYYYMMDD-HHMM.sql.gz`, `gruzpotok_YYYYMMDD-HHMM.sql.gz`
+- **Retention**: 7 дней (старые удаляются автоматически)
+
+### Проверить статус контейнера бэкапа
 
 ```bash
-# View backup container logs
-docker logs ollama-stack-postgres-backup
-
-# Check backup files in volume
-docker compose exec -T postgres ls -lh /var/lib/postgresql/backups/
+# TODO: уточнить точное имя контейнера в docker-compose.yml
+docker compose logs postgres-backup --tail 50
 ```
 
 ---
 
-## Manual Backup (Windows/PowerShell)
+## 2. Restore Procedure
 
-### Create Backup
+Восстановление из бэкапа — только с явного ОК владельца.
 
-```powershell
-.\backup.ps1
+### Шаг 1: Скопировать дамп с сервера локально
+
+```bash
+# Скачать последний бэкап botdb (запускать из scripts/)
+BACKUP_SERVER=root@<VPS> \
+BACKUP_SSH_KEY=~/.ssh/id_github \
+BACKUP_LOCAL_DIR=/media/zero/Storage1/gruzpotok-production-backups \
+./scripts/backup-to-local.sh
 ```
 
-Output:
+Скрипт скачивает:
+- код проекта (`goutruckme-git/`, `goutruckme-api/`)
+- дамп `botdb_*.sql.gz`
+- дамп `gruzpotok_*.sql.gz`
+- ротация: хранятся последние 7 снимков
+
+### Шаг 2: Восстановить в PostgreSQL
+
+```bash
+# Распаковать и залить в базу (выполнять на сервере)
+gzip -cd botdb_YYYYMMDD-HHMM.sql.gz | \
+  docker compose exec -T postgres psql -U bot botdb
 ```
-[2024-01-15 14:30:22] Creating PostgreSQL backup...
-[2024-01-15 14:30:23] Backup completed successfully!
-File: .\backups\backup_manual_20240115_143022.sql
-Size: 0.05 MB
+
+> ⚠️ Перед восстановлением убедиться, что целевая БД пустая или создана заново.
+
+---
+
+## 3. Verification
+
+### Проверить свежесть и целостность бэкапов
+
+```bash
+# Запускать локально из корня репозитория
+# Требует: PRODUCTION_BACKUP_DIR=/media/zero/Storage1/gruzpotok-production-backups
+
+PRODUCTION_BACKUP_DIR=/media/zero/Storage1/gruzpotok-production-backups \
+./scripts/check_production_backup_freshness.sh
 ```
 
-### Restore from Backup
+Скрипт проверяет:
+- наличие файлов `botdb_*.sql.gz` и `gruzpotok_*.sql.gz`
+- возраст < 36 часов (`MAX_AGE_HOURS`)
+- gzip-целостность
+- минимальный размер: `botdb` ≥ 10 MB, `gruzpotok` ≥ 1 MB
+- количество COPY-таблиц ≥ 20
 
-```powershell
-# Restore from specific backup file
-.\restore.ps1 -BackupFile ".\backups\backup_manual_20240115_143022.sql"
+Успешный вывод: `PRODUCTION_BACKUP_FRESHNESS=ok`
 
-# Force restore without confirmation
-.\restore.ps1 -BackupFile ".\backups\backup_manual_20240115_143022.sql" -Force
+### Быстрая проверка количества строк в основных таблицах
+
+```bash
+# TODO: уточнить prod-команду (зависит от того, как подключаться к postgres на VPS)
+docker compose exec -T postgres psql -U bot botdb -c "
+  SELECT status, COUNT(*) FROM cargos GROUP BY status ORDER BY status;
+"
 ```
 
 ---
 
-## Manual Backup (Linux/Bash)
+## 4. Disaster Recovery
 
-### Create Backup
+### Сценарий: потеря prod VPS
 
-```bash
-./manual-backup.sh
-```
+1. Поднять новый VPS.
+2. Установить Docker.
+3. Клонировать `goutruckme-git` из репозитория.
+4. Скопировать `.env` из последнего бэкапа или Secret Wallet.
+5. `docker compose up -d` — поднять все сервисы.
+6. Восстановить `botdb` из последнего дампа (см. раздел 2).
+7. Проверить: `/health` → `{"status":"ok"}`.
+8. Обновить DNS на новый IP (TODO: уточнить какие зоны).
 
-### Restore from Backup
+### Сценарий: повреждение botdb без потери VPS
 
-```bash
-# Restore from backup file
-docker compose exec -T postgres psql -U ollama_app ollama_app < ./backups/backup_manual_20240115_143022.sql
-```
-
----
-
-## Docker Volumes
-
-Backups are stored in Docker volumes:
-
-```bash
-# List all backup volumes
-docker volume ls | grep backup
-
-# Inspect backup volume
-docker volume inspect project_backups
-
-# Copy backup from volume to host
-docker run --rm -v project_backups:/backups -v $(pwd):/host alpine cp -r /backups/. /host/local-backups/
-```
+1. Остановить `bot` и `api` контейнеры (`docker compose stop bot api`).
+2. Восстановить дамп (раздел 2, шаг 2).
+3. Запустить обратно (`docker compose start bot api`).
+4. Проверить `/health` и cargo count.
 
 ---
 
-## Backup Retention Policy
+## Notes
 
-- **Automatic backups**: 7 days retention (older files deleted automatically)
-- **Manual backups**: Retained indefinitely
-- **Storage location**: `./backups/` directory (local) or `project_backups` volume (Docker)
-
----
-
-## Monitoring
-
-### Check backup container status
-
-```bash
-docker ps --filter name=postgres-backup
-```
-
-### View last 24h of backup logs
-
-```bash
-docker logs --since 24h ollama-stack-postgres-backup
-```
-
-### Verify backup integrity
-
-```bash
-# List tables in database (should match backup contents)
-docker compose exec -T postgres psql -U ollama_app -d ollama_app -c "\dt+"
-```
-
----
-
-## Best Practices
-
-1. **Regular Testing**: Restore backups periodically to verify integrity
-2. **Off-site Storage**: Copy backups to external storage (cloud, NAS)
-3. **Encryption**: Consider encrypting sensitive backups
-4. **Monitoring**: Alert if backup fails or takes longer than usual
-5. **Automation**: Use CI/CD to copy backups to S3/GCS daily
-
----
-
-## Troubleshooting
-
-### Backup fails with "permission denied"
-
-Check PostgreSQL user credentials in `.env`:
-```bash
-docker compose exec -T postgres psql -U ollama_app -d ollama_app -c "SELECT version();"
-```
-
-### Backup file is empty
-
-Ensure PostgreSQL is healthy:
-```bash
-docker compose exec -T postgres pg_isready -U ollama_app
-```
-
-### Restore fails
-
-- Verify file exists: `ls -la ./backups/`
-- Check database is running: `docker ps | grep postgres`
-- Try restoring to test database first
-
----
-
-## Storage Estimate
-
-- **Single backup size**: ~20-50 KB (initial)
-- **Grows with data**: ~1-5 MB per million records
-- **7-day retention**: ~150-350 KB (automatic)
-- **Annual storage**: ~20-100 MB (depending on data growth)
-
----
-
-**Last updated**: 2024-01-15  
-**Backup tool**: PostgreSQL pg_dump + gzip  
-**Schedule**: Daily 2:00 AM UTC
+- `manual-backup.sh` в корне репозитория — **устаревший**, ссылается на `ollama_app` и `ollama-stack`. Не использовать.
+- `backup.ps1` / `restore.ps1` — Windows-скрипты, не применимы к prod Linux VPS.
+- Основной инструмент: `scripts/backup-to-local.sh` + `scripts/check_production_backup_freshness.sh`.
